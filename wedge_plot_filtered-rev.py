@@ -29,6 +29,7 @@ def compute_normal(dip, dip_dir):
     n_z = np.cos(dip_rad)
     return np.array([n_x, n_y, n_z])
 
+
 # Function to compute the line of intersection between two planes
 def plane_intersection(n1, d1, n2, d2):
     l = np.cross(n1, n2)
@@ -42,6 +43,7 @@ def plane_intersection(n1, d1, n2, d2):
         return None, None
     return point, l
 
+
 # Function to compute intersection of two lines in the plane
 def compute_line_intersection(s1, t1, ds1, dt1, s2, t2, ds2, dt2):
     A = np.array([[ds1, -ds2], [dt1, -dt2]])
@@ -54,6 +56,32 @@ def compute_line_intersection(s1, t1, ds1, dt1, s2, t2, ds2, dt2):
     intersection_x = s1 + tau1 * ds1
     intersection_y = t1 + tau1 * dt1
     return (intersection_x, intersection_y)
+
+# Function to generate planes at specified spacing
+def generate_planes(normals, spacing, count):
+    planes = []
+    num_planes = len(normals)
+    for i in range(num_planes):
+        n = normals[i]
+        n = n / np.linalg.norm(n)  # Ensure normal vector is unit length
+        d = - (i - count) * spacing
+        planes.append((n, d))
+    return planes
+
+
+# Function to check if line intersects the top edge
+def line_intersects_top_edge(s0, t0, ds, dt, tau_min, tau_max, width, height):
+    if dt != 0:
+        tau_top = (height/2 - t0) / dt
+        if tau_min <= tau_top <= tau_max or tau_max <= tau_top <= tau_min:
+            s_top = s0 + tau_top * ds
+            if -width/2 <= s_top <= width/2:
+                return True
+    else:
+        if t0 == height/2 and (-width/2 <= s0 <= width/2):
+            return True
+    return False
+
 
 # Define the vertical plane (VP)
 dip_VP = 90
@@ -83,17 +111,6 @@ spacing_JP2 = 5
 phi2 = 30
 c2 = 1000
 
-# Function to generate planes at specified spacing
-def generate_planes(normals, spacing, count):
-    planes = []
-    num_planes = len(normals)
-    for i in range(num_planes):
-        n = normals[i]
-        n = n / np.linalg.norm(n)  # Ensure normal vector is unit length
-        d = - (i - count) * spacing
-        planes.append((n, d))
-    return planes
-
 # Generate planes for Joint Set 1
 count_JP1 = int(width / spacing_JP1)
 num_planes_JP1 = 2 * count_JP1 + 1
@@ -120,19 +137,6 @@ ax.set_title('Projection of Joint Sets on Vertical Plane\n(Only lines intersecti
 
 rect_corners = np.array([[-width/2, -height/2], [width/2, -height/2], [width/2, height/2], [-width/2, height/2], [-width/2, -height/2]])
 ax.plot(rect_corners[:, 0], rect_corners[:, 1], 'k-')
-
-# Function to check if line intersects the top edge
-def line_intersects_top_edge(s0, t0, ds, dt, tau_min, tau_max, width, height):
-    if dt != 0:
-        tau_top = (height/2 - t0) / dt
-        if tau_min <= tau_top <= tau_max or tau_max <= tau_top <= tau_min:
-            s_top = s0 + tau_top * ds
-            if -width/2 <= s_top <= width/2:
-                return True
-    else:
-        if t0 == height/2 and (-width/2 <= s0 <= width/2):
-            return True
-    return False
 
 # Initialize a DataFrame to store intersection points
 intersection_points = []
