@@ -169,17 +169,15 @@ def process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, alpha4):
     # Wedge formation checks
     if p * i[2] < 0 or n * q * i[2] < 0:
         print("No wedge is formed, terminating computation.")
-        exit()
+        return pd.Series([trend_i, plunge_i, np.nan, 9999, "No wedge formed"])
 
     # Tension crack checks
     if epsilon * eta * q5 * i[2] < 0 or h5 < 0 or abs(m5 * h5 / (m * h)) > 1 or abs(n * q5 * m5 * h5 / (n5 * q * m * h)) > 1:
         print("Tension crack is invalid, terminating computation.")
-        exit()
+        return pd.Series([trend_i, plunge_i, np.nan, 9999, "Tension Crack is invalid"])
 
     # If the wedge is formed and the tension crack is valid
     print("Wedge is formed and tension crack is valid.")
-    print(f"Plunge of line of intersection: {plunge_i:.2f} degrees")
-    print(f"Trend of line of intersection: {trend_i:.2f} degrees")
 
     # Calculate areas of faces and weight of wedge
     A1 = abs(m * q * h**2 - m5 * q5 * h5**2) / (2 * abs(p))  
@@ -187,22 +185,13 @@ def process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, alpha4):
     A5 = abs(m5 * q5 * h5**2) / (2 * abs(n5))  
     W = gamma * (q**2 * m**2 * h**3 / abs(n) - q5**2 * m5**2 * h5**3 / abs(n5)) / (6 * abs(p))  
 
-    print(f"Areas of faces:\nA1: {A1:.2f} ft^2\nA2: {A2:.2f} ft^2\nA5: {A5:.2f} ft^2")
-    print(f"Weight of wedge: {W:.2f} lb")
-
     # Calculate normal reactions on planes 1 and 2 
     N1 = rho * W * k[2]  
     N2 = mu * W * l[2] 
 
-    print(f"Normal reactions:\nN1: {N1:.2f} lb\nN2: {N2:.2f} lb")
-
     distance = distance_from_crest(H1, plunge_i, trend_i, alpha4)
-    print(f"Backbreak distance from crest: {distance:.2f} ft")
 
     distance_c = distance_to_tension_crack(L, alpha1, alpha4)
-    print(f"Distance to tension crack: {distance_c:.2f} ft")
-
     FOS = compute_factor_of_safety(N1, N2, W, a, b, c1, c2, phi1, phi2, A1, A2, nu, i)
-    print(f"Factor of Safety: {FOS:.2f}")
-
-    return pd.Series([trend_i, plunge_i, distance, FOS])
+ 
+    return pd.Series([trend_i, plunge_i, distance, FOS, "Wedge is formed and tension crack is valid"])

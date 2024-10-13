@@ -13,11 +13,11 @@ def calculate_wedge_params(row):
     alpha2 = row['dip_dir_JP2']
     H1 = row['Wedge Height']
     
-    # Call the process_wedges function with the extracted parameters and global constants
-    trend_i, plunge_i, distance_from_crest, FOS = process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, dip_dir_VP)  
+    # Call the updated process_wedges function
+    trend_i, plunge_i, distance_from_crest, FOS, message = process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, dip_dir_VP)  
 
-    # Return the calculated values for trend, plunge, distance from crest, and FOS
-    return pd.Series([trend_i, plunge_i, distance_from_crest, FOS])
+    # Return the calculated values along with the message
+    return pd.Series([trend_i, plunge_i, distance_from_crest, FOS, message])
 
 
 # Function to compute the normal vector from dip and dip direction
@@ -231,7 +231,8 @@ for idx2, (n_JP2, d_JP2) in enumerate(planes_JP2):
 # Convert to pandas DataFrame and display
 df_intersections = pd.DataFrame(intersection_points)
 df_intersections["Wedge Height"] = (height / 2) - df_intersections["Y (ft)"]
-df_intersections[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety']] = df_intersections.apply(calculate_wedge_params, axis=1)
+df_intersections[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Message']] = df_intersections.apply(calculate_wedge_params, axis=1)
+df_intersections["Intersection Length"] = df_intersections["Wedge Height"] / np.sin(np.radians(df_intersections["Plunge"]))
 print(df_intersections)
 plt.grid(True)
 
