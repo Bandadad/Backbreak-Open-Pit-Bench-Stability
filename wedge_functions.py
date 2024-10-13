@@ -168,16 +168,11 @@ def process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, alpha4):
     # Check on wedge geometry 
     # Wedge formation checks
     if p * i[2] < 0 or n * q * i[2] < 0:
-        print("No wedge is formed, terminating computation.")
         return pd.Series([trend_i, plunge_i, np.nan, 9999, "No wedge formed"])
 
     # Tension crack checks
     if epsilon * eta * q5 * i[2] < 0 or h5 < 0 or abs(m5 * h5 / (m * h)) > 1 or abs(n * q5 * m5 * h5 / (n5 * q * m * h)) > 1:
-        print("Tension crack is invalid, terminating computation.")
         return pd.Series([trend_i, plunge_i, np.nan, 9999, "Tension Crack is invalid"])
-
-    # If the wedge is formed and the tension crack is valid
-    print("Wedge is formed and tension crack is valid.")
 
     # Calculate areas of faces and weight of wedge
     A1 = abs(m * q * h**2 - m5 * q5 * h5**2) / (2 * abs(p))  

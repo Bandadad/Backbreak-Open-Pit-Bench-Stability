@@ -69,6 +69,24 @@ def generate_planes(normals, spacing, count):
     return planes
 
 
+def generate_joint_planes(dip_mean, dip_std, dip_dir_mean, dip_dir_std, spacing, width):
+    # Calculate the number of planes
+    count = int(width / spacing)
+    num_planes = 2 * count + 1
+
+    # Generate random dips and dip directions
+    dips = np.random.normal(dip_mean, dip_std, size=num_planes)
+    dip_dirs = np.random.normal(dip_dir_mean, dip_dir_std, size=num_planes)
+
+    # Compute the normal vectors for the planes
+    normals = [compute_normal(dip, dip_dir) for dip, dip_dir in zip(dips, dip_dirs)]
+
+    # Generate the planes using the normal vectors and spacing
+    planes = generate_planes(normals, spacing, count)
+
+    return planes, dips, dip_dirs
+
+
 # Function to check if line intersects the top edge
 def line_intersects_top_edge(s0, t0, ds, dt, tau_min, tau_max, width, height):
     if dt != 0:
@@ -82,6 +100,114 @@ def line_intersects_top_edge(s0, t0, ds, dt, tau_min, tau_max, width, height):
             return True
     return False
 
+
+def calculate_tau_limits(s0, t0, ds, dt, width, height):
+    # Calculate tau for s-axis
+    tau_s1 = (-width/2 - s0) / ds if ds != 0 else -np.inf
+    tau_s2 = (width/2 - s0) / ds if ds != 0 else np.inf
+
+    # Calculate tau for t-axis
+    tau_t1 = (-height/2 - t0) / dt if dt != 0 else -np.inf
+    tau_t2 = (height/2 - t0) / dt if dt != 0 else np.inf
+
+    # Determine minimum and maximum tau
+    tau_min = max(min(tau_s1, tau_s2), min(tau_t1, tau_t2))
+    tau_max = min(max(tau_s1, tau_s2), max(tau_t1, tau_t2))
+
+    return tau_min, tau_max
+
+
+def generate_intersections(planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, u1, u2, width, height):
+    # Initialize lists to store data
+    intersection_points = []
+    filtered_lines_JP1 = []
+    filtered_lines_JP2 = []
+
+    # Process Joint Set 1
+    for idx1, (n_JP1, d_JP1) in enumerate(planes_JP1):
+        dip_JP1 = dips_JP1[idx1]
+        dip_dir_JP1 = dip_dirs_JP1[idx1]
+        point1, direction1 = plane_intersection(n_VP, d_VP, n_JP1, d_JP1)
+        if point1 is None:
+            continue
+        s0_1 = np.dot(point1, u1)
+        t0_1 = np.dot(point1, u2)
+        ds1 = np.dot(direction1, u1)
+        dt1 = np.dot(direction1, u2)
+        if ds1 == 0 and dt1 == 0:
+            continue
+        tau_min, tau_max = calculate_tau_limits(s0_1, t0_1, ds1, dt1, width, height)
+        if tau_min > tau_max or not line_intersects_top_edge(s0_1, t0_1, ds1, dt1, tau_min, tau_max, width, height):
+            continue
+        filtered_lines_JP1.append({'s0': s0_1, 't0': t0_1, 'ds': ds1, 'dt': dt1, 'dip': dip_JP1, 'dip_dir': dip_dir_JP1})
+
+    # Process Joint Set 2 and compute intersections with Joint Set 1
+    for idx2, (n_JP2, d_JP2) in enumerate(planes_JP2):
+        dip_JP2 = dips_JP2[idx2]
+        dip_dir_JP2 = dip_dirs_JP2[idx2]
+        point2, direction2 = plane_intersection(n_VP, d_VP, n_JP2, d_JP2)
+        if point2 is None:
+            continue
+        s0_2 = np.dot(point2, u1)
+        t0_2 = np.dot(point2, u2)
+        ds2 = np.dot(direction2, u1)
+        dt2 = np.dot(direction2, u2)
+        if ds2 == 0 and dt2 == 0:
+            continue
+        tau_min2, tau_max2 = calculate_tau_limits(s0_2, t0_2, ds2, dt2, width, height)
+        if tau_min2 > tau_max2 or not line_intersects_top_edge(s0_2, t0_2, ds2, dt2, tau_min2, tau_max2, width, height):
+            continue
+        filtered_lines_JP2.append({'s0': s0_2, 't0': t0_2, 'ds': ds2, 'dt': dt2, 'dip': dip_JP2, 'dip_dir': dip_dir_JP2})
+
+        for line_JP1 in filtered_lines_JP1:
+            intersection = compute_line_intersection(line_JP1['s0'], line_JP1['t0'], line_JP1['ds'], line_JP1['dt'], s0_2, t0_2, ds2, dt2)
+            if intersection is not None:
+                x, y = intersection
+                if -width/2 <= x <= width/2 and -height/2 <= y <= height/2:
+                    intersection_points.append({
+                        'X (ft)': x,
+                        'Y (ft)': y,
+                        'dip_JP1': line_JP1['dip'],
+                        'dip_dir_JP1': line_JP1['dip_dir'],
+                        'dip_JP2': dip_JP2,
+                        'dip_dir_JP2': dip_dir_JP2
+                    })
+
+    return filtered_lines_JP1, filtered_lines_JP2, intersection_points
+
+
+def plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height):
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.set_xlim(-width/2, width/2)
+    ax.set_ylim(-height/2, height/2)
+    ax.set_xlabel('X-axis (ft)')
+    ax.set_ylabel('Y-axis (ft)')
+    ax.set_title('Projection of Joint Sets on Vertical Plane\n(Only lines intersecting the top edge are shown)')
+
+    # Draw rectangle boundary
+    rect_corners = np.array([[-width/2, -height/2], [width/2, -height/2], [width/2, height/2], [-width/2, height/2], [-width/2, -height/2]])
+    ax.plot(rect_corners[:, 0], rect_corners[:, 1], 'k-')
+
+    # Plot Joint Set 1
+    for line in filtered_lines_JP1:
+        tau_min, tau_max = calculate_tau_limits(line['s0'], line['t0'], line['ds'], line['dt'], width, height)
+        s1 = line['s0'] + tau_min * line['ds']
+        t1 = line['t0'] + tau_min * line['dt']
+        s2 = line['s0'] + tau_max * line['ds']
+        t2 = line['t0'] + tau_max * line['dt']
+        ax.plot([s1, s2], [t1, t2], 'b-')
+
+    # Plot Joint Set 2
+    for line in filtered_lines_JP2:
+        tau_min, tau_max = calculate_tau_limits(line['s0'], line['t0'], line['ds'], line['dt'], width, height)
+        s1 = line['s0'] + tau_min * line['ds']
+        t1 = line['t0'] + tau_min * line['dt']
+        s2 = line['s0'] + tau_max * line['ds']
+        t2 = line['t0'] + tau_max * line['dt']
+        ax.plot([s1, s2], [t1, t2], 'r-')
+
+    plt.grid(True)
+    plt.show()
 
 # Define the vertical plane (VP)
 dip_VP = 90
@@ -112,121 +238,14 @@ phi2 = 30
 c2 = 1000
 
 # Generate planes for Joint Set 1
-count_JP1 = int(width / spacing_JP1)
-num_planes_JP1 = 2 * count_JP1 + 1
-dips_JP1 = np.random.normal(dip_JP1_mean, dip_JP1_std, size=num_planes_JP1)
-dip_dirs_JP1 = np.random.normal(dip_dir_JP1_mean, dip_dir_JP1_std, size=num_planes_JP1)
-normals_JP1 = [compute_normal(dip, dip_dir) for dip, dip_dir in zip(dips_JP1, dip_dirs_JP1)]
-planes_JP1 = generate_planes(normals_JP1, spacing_JP1, count_JP1)
+planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
 
 # Generate planes for Joint Set 2
-count_JP2 = int(width / spacing_JP2)
-num_planes_JP2 = 2 * count_JP2 + 1
-dips_JP2 = np.random.normal(dip_JP2_mean, dip_JP2_std, size=num_planes_JP2)
-dip_dirs_JP2 = np.random.normal(dip_dir_JP2_mean, dip_dir_JP2_std, size=num_planes_JP2)
-normals_JP2 = [compute_normal(dip, dip_dir) for dip, dip_dir in zip(dips_JP2, dip_dirs_JP2)]
-planes_JP2 = generate_planes(normals_JP2, spacing_JP2, count_JP2)
+planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2_std, dip_dir_JP2_mean, dip_dir_JP2_std, spacing_JP2, width)
 
-# Plotting setup
-fig, ax = plt.subplots(figsize=(8, 8))
-ax.set_xlim(-width/2, width/2)
-ax.set_ylim(-height/2, height/2)
-ax.set_xlabel('X-axis (ft)')
-ax.set_ylabel('Y-axis (ft)')
-ax.set_title('Projection of Joint Sets on Vertical Plane\n(Only lines intersecting the top edge are shown)')
-
-rect_corners = np.array([[-width/2, -height/2], [width/2, -height/2], [width/2, height/2], [-width/2, height/2], [-width/2, -height/2]])
-ax.plot(rect_corners[:, 0], rect_corners[:, 1], 'k-')
-
-# Initialize a DataFrame to store intersection points
-intersection_points = []
-
-# Store the filtered lines
-filtered_lines_JP1 = []
-filtered_lines_JP2 = []
-
-# Plot joint set 1 (blue lines) and filter
-for idx1, (n_JP1, d_JP1) in enumerate(planes_JP1):
-    dip_JP1 = dips_JP1[idx1]
-    dip_dir_JP1 = dip_dirs_JP1[idx1]
-    point1, direction1 = plane_intersection(n_VP, d_VP, n_JP1, d_JP1)
-    if point1 is None:
-        continue
-    s0_1 = np.dot(point1, u1)
-    t0_1 = np.dot(point1, u2)
-    ds1 = np.dot(direction1, u1)
-    dt1 = np.dot(direction1, u2)
-    if ds1 == 0 and dt1 == 0:
-        continue
-    tau_s1 = (-width/2 - s0_1) / ds1 if ds1 != 0 else -np.inf
-    tau_s2 = (width/2 - s0_1) / ds1 if ds1 != 0 else np.inf
-    tau_t1 = (-height/2 - t0_1) / dt1 if dt1 != 0 else -np.inf
-    tau_t2 = (height/2 - t0_1) / dt1 if dt1 != 0 else np.inf
-    tau_min = max(min(tau_s1, tau_s2), min(tau_t1, tau_t2))
-    tau_max = min(max(tau_s1, tau_s2), max(tau_t1, tau_t2))
-    if tau_min > tau_max:
-        continue
-    if not line_intersects_top_edge(s0_1, t0_1, ds1, dt1, tau_min, tau_max, width, height):
-        continue
-    s1 = s0_1 + tau_min * ds1
-    t1 = t0_1 + tau_min * dt1
-    s2 = s0_1 + tau_max * ds1
-    t2 = t0_1 + tau_max * dt1
-    ax.plot([s1, s2], [t1, t2], 'b-')
-    # Store the filtered line along with dip and dip_dir
-    filtered_lines_JP1.append({'s0': s0_1, 't0': t0_1, 'ds': ds1, 'dt': dt1, 'dip': dip_JP1, 'dip_dir': dip_dir_JP1})
-
-# Plot joint set 2 (red lines), filter, and calculate intersections
-for idx2, (n_JP2, d_JP2) in enumerate(planes_JP2):
-    dip_JP2 = dips_JP2[idx2]
-    dip_dir_JP2 = dip_dirs_JP2[idx2]
-    point2, direction2 = plane_intersection(n_VP, d_VP, n_JP2, d_JP2)
-    if point2 is None:
-        continue
-    s0_2 = np.dot(point2, u1)
-    t0_2 = np.dot(point2, u2)
-    ds2 = np.dot(direction2, u1)
-    dt2 = np.dot(direction2, u2)
-    if ds2 == 0 and dt2 == 0:
-        continue
-    tau_s1_2 = (-width/2 - s0_2) / ds2 if ds2 != 0 else -np.inf
-    tau_s2_2 = (width/2 - s0_2) / ds2 if ds2 != 0 else np.inf
-    tau_t1_2 = (-height/2 - t0_2) / dt2 if dt2 != 0 else -np.inf
-    tau_t2_2 = (height/2 - t0_2) / dt2 if dt2 != 0 else np.inf
-    tau_min2 = max(min(tau_s1_2, tau_s2_2), min(tau_t1_2, tau_t2_2))
-    tau_max2 = min(max(tau_s1_2, tau_s2_2), max(tau_t1_2, tau_t2_2))
-    if tau_min2 > tau_max2:
-        continue
-    if not line_intersects_top_edge(s0_2, t0_2, ds2, dt2, tau_min2, tau_max2, width, height):
-        continue
-    s1_2 = s0_2 + tau_min2 * ds2
-    t1_2 = t0_2 + tau_min2 * dt2
-    s2_2 = s0_2 + tau_max2 * ds2
-    t2_2 = t0_2 + tau_max2 * dt2
-    ax.plot([s1_2, s2_2], [t1_2, t2_2], 'r-')
-    # Store the filtered line along with dip and dip_dir
-    filtered_lines_JP2.append({'s0': s0_2, 't0': t0_2, 'ds': ds2, 'dt': dt2, 'dip': dip_JP2, 'dip_dir': dip_dir_JP2})
-
-    # Now compute intersections between filtered joint set 1 and this line
-    for line_JP1 in filtered_lines_JP1:
-        s0_1 = line_JP1['s0']
-        t0_1 = line_JP1['t0']
-        ds1 = line_JP1['ds']
-        dt1 = line_JP1['dt']
-        intersection = compute_line_intersection(s0_1, t0_1, ds1, dt1, s0_2, t0_2, ds2, dt2)
-        if intersection is not None:
-            x, y = intersection
-            # Filter by window bounds
-            if -width/2 <= x <= width/2 and -height/2 <= y <= height/2:
-                # Store intersection point along with dips and dip_dirs of both planes
-                intersection_points.append({
-                    'X (ft)': x,
-                    'Y (ft)': y,
-                    'dip_JP1': line_JP1['dip'],
-                    'dip_dir_JP1': line_JP1['dip_dir'],
-                    'dip_JP2': dip_JP2,
-                    'dip_dir_JP2': dip_dir_JP2
-                })
+# Generate intersections
+filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
+    planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, u1, u2, width, height)
 
 # Convert to pandas DataFrame and display
 df_intersections = pd.DataFrame(intersection_points)
@@ -234,7 +253,9 @@ df_intersections["Wedge Height"] = (height / 2) - df_intersections["Y (ft)"]
 df_intersections[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Message']] = df_intersections.apply(calculate_wedge_params, axis=1)
 df_intersections["Intersection Length"] = df_intersections["Wedge Height"] / np.sin(np.radians(df_intersections["Plunge"]))
 print(df_intersections)
-plt.grid(True)
+
+# Plot the result
+plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
 
 plt.figure(figsize=(8, 6))
 plt.hist(df_intersections['Factor of Safety'], bins=50, color='blue', edgecolor='black')
