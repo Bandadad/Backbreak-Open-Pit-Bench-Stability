@@ -118,7 +118,11 @@ def calculate_tau_limits(s0, t0, ds, dt, width, height):
     return tau_min, tau_max
 
 
-def generate_intersections(planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, width, height):
+def generate_intersections(planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height):
+    # Compute n_VP and d_VP within the function
+    n_VP = compute_normal(dip_VP, dip_dir_VP)
+    d_VP = 0  # Passing through origin
+    
     # Calculate u1 and u2 based on the normal vector of the vertical plane (n_VP)
     u1 = np.cross(n_VP, np.array([0, 0, 1]))
     u1 /= np.linalg.norm(u1)
@@ -247,17 +251,15 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
     return df
 
 
-# Define the vertical plane (VP)
+# Define the bench face orientation - vertical plane (VP)
 dip_VP = 90
 dip_dir_VP = 185
-n_VP = compute_normal(dip_VP, dip_dir_VP)
-d_VP = 0  # Passing through origin
 
-# Define the vertical plane of the simulation window
+# Define the dimensions of the simulation window on the bench face
 height = 100
 width = height
 
-# Backbreak Cells
+# Define Backbreak Cells
 cell_number = 10
 cell_width = width / cell_number
 
@@ -286,7 +288,7 @@ planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2
 
 # Generate intersections
 filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
-    planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, width, height)
+    planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height)
 
 # Pandas DataFrame Compilation
 df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
