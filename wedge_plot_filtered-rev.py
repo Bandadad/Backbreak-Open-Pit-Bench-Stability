@@ -57,6 +57,7 @@ def compute_line_intersection(s1, t1, ds1, dt1, s2, t2, ds2, dt2):
     intersection_y = t1 + tau1 * dt1
     return (intersection_x, intersection_y)
 
+
 # Function to generate planes at specified spacing
 def generate_planes(normals, spacing, count):
     planes = []
@@ -117,7 +118,13 @@ def calculate_tau_limits(s0, t0, ds, dt, width, height):
     return tau_min, tau_max
 
 
-def generate_intersections(planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, u1, u2, width, height):
+def generate_intersections(planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, width, height):
+    # Calculate u1 and u2 based on the normal vector of the vertical plane (n_VP)
+    u1 = np.cross(n_VP, np.array([0, 0, 1]))
+    u1 /= np.linalg.norm(u1)
+    u2 = np.cross(u1, n_VP)
+    u2 /= np.linalg.norm(u2)
+    
     # Initialize lists to store data
     intersection_points = []
     filtered_lines_JP1 = []
@@ -209,33 +216,67 @@ def plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, inters
     plt.grid(True)
     plt.show()
 
+
+def plot_FOS_histogram(df_intersections):
+    plt.figure(figsize=(8, 6))
+    plt.hist(df_intersections['Factor of Safety'], bins=50, color='blue', edgecolor='black')
+    plt.axvline(x=1, color='red', linestyle='--', linewidth=2, label='FOS = 1')
+    plt.title('Histogram of Factor of Safety Values')
+    plt.xlabel('Factor of Safety')
+    plt.ylabel('Frequency')
+    plt.grid(True)
+    plt.show()
+
+
+def process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2):
+    # Create the DataFrame
+    df = pd.DataFrame(intersection_points)
+    
+    # Calculate additional columns in one step
+    df["Wedge Height"] = (height / 2) - df["Y (ft)"]
+    df[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Message']] = df.apply(calculate_wedge_params, axis=1)
+    df["Intersection Length"] = df["Wedge Height"] / np.sin(np.radians(df["Plunge"]))
+    
+    # Calculate cell number and probability P_L(wedge)
+    df['Cell Number'] = (df['Distance from Crest'] // cell_width).astype(int) + 1
+    df["P_L(wedge)"] = np.exp(-df["Intersection Length"] / mean_length1) * np.exp(-df["Intersection Length"] / mean_length2)
+    
+    # Move 'Message' column to the last position
+    df = df[[col for col in df.columns if col != 'Message'] + ['Message']]
+    
+    return df
+
+
 # Define the vertical plane (VP)
 dip_VP = 90
 dip_dir_VP = 185
 n_VP = compute_normal(dip_VP, dip_dir_VP)
 d_VP = 0  # Passing through origin
 
-# Define the vertical plane rectangle in its local coordinate system
-width, height = 100, 100
-u1 = np.cross(n_VP, np.array([0, 0, 1]))
-u1 /= np.linalg.norm(u1)
-u2 = np.cross(u1, n_VP)
-u2 /= np.linalg.norm(u2)
+# Define the vertical plane of the simulation window
+height = 100
+width = height
+
+# Backbreak Cells
+cell_number = 10
+cell_width = width / cell_number
 
 # Probabilistic sampling parameters for Joint Sets
 # Joint Set 1
 dip_JP1_mean, dip_JP1_std = 45, 2
 dip_dir_JP1_mean, dip_dir_JP1_std = 105, 5
 spacing_JP1 = 7.5
+mean_length1 = 10.0
 phi1 = 20
-c1 = 500
+c1 = 50
 
 # Joint Set 2
 dip_JP2_mean, dip_JP2_std = 70, 2
 dip_dir_JP2_mean, dip_dir_JP2_std = 235, 5
 spacing_JP2 = 5
+mean_length2 = 15.0
 phi2 = 30
-c2 = 1000
+c2 = 10
 
 # Generate planes for Joint Set 1
 planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
@@ -245,23 +286,12 @@ planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2
 
 # Generate intersections
 filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
-    planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, u1, u2, width, height)
+    planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, n_VP, d_VP, width, height)
 
-# Convert to pandas DataFrame and display
-df_intersections = pd.DataFrame(intersection_points)
-df_intersections["Wedge Height"] = (height / 2) - df_intersections["Y (ft)"]
-df_intersections[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Message']] = df_intersections.apply(calculate_wedge_params, axis=1)
-df_intersections["Intersection Length"] = df_intersections["Wedge Height"] / np.sin(np.radians(df_intersections["Plunge"]))
+# Pandas DataFrame Compilation
+df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
+
+# Print and plot the results
 print(df_intersections)
-
-# Plot the result
 plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
-
-plt.figure(figsize=(8, 6))
-plt.hist(df_intersections['Factor of Safety'], bins=50, color='blue', edgecolor='black')
-plt.axvline(x=1, color='red', linestyle='--', linewidth=2, label='FOS = 1')
-plt.title('Histogram of Factor of Safety Values')
-plt.xlabel('Factor of Safety')
-plt.ylabel('Frequency')
-plt.grid(True)
-plt.show()
+plot_FOS_histogram(df_intersections)
