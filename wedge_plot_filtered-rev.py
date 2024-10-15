@@ -275,7 +275,7 @@ c1 = 50
 # Joint Set 2
 dip_JP2_mean, dip_JP2_std = 70, 2
 dip_dir_JP2_mean, dip_dir_JP2_std = 235, 5
-spacing_JP2 = 5
+spacing_JP2 = 10
 mean_length2 = 15.0
 phi2 = 30
 c2 = 10
