@@ -2,64 +2,85 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd 
 
-def compute_factor_of_safety(N1, N2, W, a, b, c1, c2, phi1, phi2, A1, A2, nu, i):
+def compute_factor_of_safety(N1, N2, W, a, b, A1, A2, nu, i, 
+                             c1_mean, c1_std, c2_mean, c2_std, phi1_mean, phi1_std, phi2_mean, phi2_std):
     """
-    Function to compute the factor of safety based on the values of N1 and N2.
-    
-    Parameters:
-    N1, N2 : float
-        Normal reactions on planes 1 and 2
-    W : float
-        Weight of the wedge
-    a, b : np.array
-        Unit normal vectors for planes 1 and 2
-    c1, c2 : float
-        Cohesion on planes 1 and 2
-    phi1, phi2 : float
-        Friction angles on planes 1 and 2 (in degrees)
-    A1, A2 : float
-        Areas of planes 1 and 2
-
     Returns:
-    float
-        Factor of Safety (FOS)
+        FOS: Factor of Safety
+        prob_failure: Probability of Failure (when FOS < 1.0)
     """
 
-    # Case 1: N1 < 0 and N2 < 0
+    # Define failure as Factor of Safety < 1.0
+    def point_estimate(mean, std, N):
+        """Helper function to generate point estimate samples."""
+        return np.random.normal(mean, std, N)
+
+    # Generate sample values using the point estimate method
+    samples = 1000  # You can adjust the sample size as needed
+    phi1_samples = point_estimate(phi1_mean, phi1_std, samples)
+    phi2_samples = point_estimate(phi2_mean, phi2_std, samples)
+    c1_samples = point_estimate(c1_mean, c1_std, samples)
+    c2_samples = point_estimate(c2_mean, c2_std, samples)
+
+    fos_samples = []
+
+    # Process each of the three cases separately
+    for p1, p2, coh1, coh2 in zip(phi1_samples, phi2_samples, c1_samples, c2_samples):
+        
+        # Case 1: N1 < 0 and N2 < 0 (no shear strength, immediate failure)
+        if N1 < 0 and N2 < 0:
+            fos_samples.append(0)  # FOS = 0
+        
+        # Case 2: N1 > 0 and N2 < 0 (compute FOS for plane 1)
+        elif N1 > 0 and N2 < 0:
+            N_a = W * a[2]
+            S_a = np.sqrt((N_a * a[0])**2 + (N_a * a[1])**2 + (N_a * a[2] + W)**2)
+            Q_a = N_a * np.tan(np.radians(p1)) + coh1 * A1
+            FOS_1 = Q_a / S_a
+            fos_samples.append(FOS_1)
+        
+        # Case 3: N1 < 0 and N2 > 0 (compute FOS for plane 2)
+        elif N1 < 0 and N2 > 0:
+            N_b = W * b[2]
+            S_b = np.sqrt((N_b * b[0])**2 + (N_b * b[1])**2 + (N_b * b[2] + W)**2)
+            Q_b = N_b * np.tan(np.radians(p2)) + coh2 * A2
+            FOS_2 = Q_b / S_b
+            fos_samples.append(FOS_2)
+        
+        # Case 4: N1 > 0 and N2 > 0 (compute FOS for both planes)
+        elif N1 > 0 and N2 > 0:
+            S = nu * W * i[2]
+            Q = N1 * np.tan(np.radians(p1)) + N2 * np.tan(np.radians(p2)) + coh1 * A1 + coh2 * A2
+            FOS_3 = Q / S
+            fos_samples.append(FOS_3)
+
+    # Calculate probability of failure
+    failure_count = np.sum(np.array(fos_samples) < 1.0)
+    probability_of_failure = failure_count / samples
+
+    # Calculate the FOS based on the original (deterministic) parameters
+    FOS = compute_original_fos(N1, N2, W, a, b, c1_mean, c2_mean, phi1_mean, phi2_mean, A1, A2, nu, i)
+
+    return FOS, probability_of_failure
+
+def compute_original_fos(N1, N2, W, a, b, c1, c2, phi1, phi2, A1, A2, nu, i):
+    """Helper function to calculate the original deterministic Factor of Safety."""
     if N1 < 0 and N2 < 0:
-        return 0  # FOS = 0
-    
-    # Case 2: N1 > 0 and N2 < 0
+        return 0
     elif N1 > 0 and N2 < 0:
-        # Compute FOS for plane 1
-        N_a = W * a[2]  # Normal force on plane 1
-        S_x = N_a * a[0]  # Shear force components
-        S_y = N_a * a[1]
-        S_z = N_a * a[2] + W
-        S_a = np.sqrt(S_x**2 + S_y**2 + S_z**2)  # Total shear force
-        Q_a = N_a * np.tan(np.radians(phi1)) + c1 * A1  # Shear resistance on plane 1
-        FOS_1 = Q_a / S_a  # Factor of safety on plane 1
-        return FOS_1
-    
-    # Case 3: N1 < 0 and N2 > 0
+        N_a = W * a[2]
+        S_a = np.sqrt((N_a * a[0])**2 + (N_a * a[1])**2 + (N_a * a[2] + W)**2)
+        Q_a = N_a * np.tan(np.radians(phi1)) + c1 * A1
+        return Q_a / S_a
     elif N1 < 0 and N2 > 0:
-        # Compute FOS for plane 2
-        N_b = W * b[2]  # Normal force on plane 2
-        S_x = N_b * b[0]  # Shear force components
-        S_y = N_b * b[1]
-        S_z = N_b * b[2] + W
-        S_b = np.sqrt(S_x**2 + S_y**2 + S_z**2)  # Total shear force
-        Q_b = N_b * np.tan(np.radians(phi2)) + c2 * A2  # Shear resistance on plane 2
-        FOS_2 = Q_b / S_b  # Factor of safety on plane 2
-        return FOS_2
-    
-    # Case 4: N1 > 0 and N2 > 0
+        N_b = W * b[2]
+        S_b = np.sqrt((N_b * b[0])**2 + (N_b * b[1])**2 + (N_b * b[2] + W)**2)
+        Q_b = N_b * np.tan(np.radians(phi2)) + c2 * A2
+        return Q_b / S_b
     elif N1 > 0 and N2 > 0:
-        # Compute FOS for both planes 1 and 2
-        S = nu * W * i[2]  # Total shear force
-        Q = N1 * np.tan(np.radians(phi1)) + N2 * np.tan(np.radians(phi2)) + c1 * A1 + c2 * A2  # Total shear resistance
-        FOS_3 = Q / S  # Factor of safety on both planes
-        return FOS_3
+        S = nu * W * i[2]
+        Q = N1 * np.tan(np.radians(phi1)) + N2 * np.tan(np.radians(phi2)) + c1 * A1 + c2 * A2
+        return Q / S
 
 
 def distance_from_crest(h, plunge, trend, alpha4):
@@ -103,7 +124,7 @@ def line_of_intersection(n1, n2):
     return intersection_vector
 
 
-def process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, alpha4):
+def process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, alpha4):
     # Input angles and geometry (from the example in the PDF)
     dip3 = 0   # Dip of plane 3 (degrees)
     dip4 = 90  # Dip of slope face (degrees)
@@ -159,7 +180,7 @@ def process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, alpha4):
     h = H1 / abs(g[2])  
     h5 = 0
     L = (M * h / abs(p)) 
-    B = (np.tan(np.radians(phi1))**2 + np.tan(np.radians(phi2))**2 - 2 * (mu * r / rho) * np.tan(np.radians(phi1)) * np.tan(np.radians(phi2))) / R**2  # Equation III.45
+    B = (np.tan(np.radians(phi1_mean))**2 + np.tan(np.radians(phi2_mean))**2 - 2 * (mu * r / rho) * np.tan(np.radians(phi1_mean)) * np.tan(np.radians(phi2_mean))) / R**2  # Equation III.45
 
     # Calculate Plunge and trend of line of intersection (Equations III.46 - III.47)
     plunge_i = np.degrees(np.arcsin(nu * i[2]))  # Equation III.46
@@ -168,11 +189,11 @@ def process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, alpha4):
     # Check on wedge geometry 
     # Wedge formation checks
     if p * i[2] < 0 or n * q * i[2] < 0:
-        return pd.Series([trend_i, plunge_i, np.nan, 9999, "No wedge formed"])
+        return pd.Series([trend_i, plunge_i, np.nan, 9999, 9999, "No wedge formed"])
 
     # Tension crack checks
     if epsilon * eta * q5 * i[2] < 0 or h5 < 0 or abs(m5 * h5 / (m * h)) > 1 or abs(n * q5 * m5 * h5 / (n5 * q * m * h)) > 1:
-        return pd.Series([trend_i, plunge_i, np.nan, 9999, "Tension Crack is invalid"])
+        return pd.Series([trend_i, plunge_i, np.nan, 9999, 9999, "Tension Crack is invalid"])
 
     # Calculate areas of faces and weight of wedge
     A1 = abs(m * q * h**2 - m5 * q5 * h5**2) / (2 * abs(p))  
@@ -187,6 +208,6 @@ def process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, alpha4):
     distance = distance_from_crest(H1, plunge_i, trend_i, alpha4)
 
     distance_c = distance_to_tension_crack(L, alpha1, alpha4)
-    FOS = compute_factor_of_safety(N1, N2, W, a, b, c1, c2, phi1, phi2, A1, A2, nu, i)
+    FOS, probability_of_failure = compute_factor_of_safety(N1, N2, W, a, b, A1, A2, nu, i, c1_mean, c1_std, c2_mean, c2_std, phi1_mean, phi1_std, phi2_mean, phi2_std)
  
-    return pd.Series([trend_i, plunge_i, distance, FOS, "Wedge is formed and tension crack is valid"])
+    return pd.Series([trend_i, plunge_i, distance, FOS, probability_of_failure, "Wedge is formed and tension crack is valid"])

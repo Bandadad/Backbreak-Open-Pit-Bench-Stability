@@ -14,10 +14,10 @@ def calculate_wedge_params(row):
     H1 = row['Wedge Height']
     
     # Call the updated process_wedges function
-    trend_i, plunge_i, distance_from_crest, FOS, message = process_wedges(dip1, alpha1, c1, phi1, dip2, alpha2, c2, phi2, H1, dip_dir_VP)  
+    trend_i, plunge_i, distance_from_crest, FOS, probability_of_failure, message = process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, dip_dir_VP)  
 
     # Return the calculated values along with the message
-    return pd.Series([trend_i, plunge_i, distance_from_crest, FOS, message])
+    return pd.Series([trend_i, plunge_i, distance_from_crest, FOS, probability_of_failure, message])
 
 
 # Function to compute the normal vector from dip and dip direction
@@ -231,6 +231,17 @@ def plot_FOS_histogram(df_intersections):
     plt.grid(True)
     plt.show()
 
+def plot_POS_histogram(df_intersections):
+    plt.figure(figsize=(8, 6))
+    plt.hist(df_intersections['Prob of Sliding'], bins=50, color='blue', edgecolor='black')
+    plt.axvline(x=1, color='red', linestyle='--', linewidth=2, label='FOS = 1')
+    plt.title('Histogram of Probability of Sliding Values')
+    plt.xlabel('Probability of Sliding')
+    plt.ylabel('Frequency')
+    plt.grid(True)
+    plt.show()
+
+
 
 def process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2):
     # Create the DataFrame
@@ -238,7 +249,7 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
     
     # Calculate additional columns in one step
     df["Wedge Height"] = (height / 2) - df["Y (ft)"]
-    df[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Message']] = df.apply(calculate_wedge_params, axis=1)
+    df[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Prob of Sliding', 'Message']] = df.apply(calculate_wedge_params, axis=1)
     df["Intersection Length"] = df["Wedge Height"] / np.sin(np.radians(df["Plunge"]))
     
     # Calculate cell number and probability P_L(wedge)
@@ -269,16 +280,16 @@ dip_JP1_mean, dip_JP1_std = 45, 2
 dip_dir_JP1_mean, dip_dir_JP1_std = 105, 5
 spacing_JP1 = 7.5
 mean_length1 = 10.0
-phi1 = 20
-c1 = 50
+phi1_mean, phi1_std = 20, 5
+c1_mean, c1_std = 50, 10
 
 # Joint Set 2
 dip_JP2_mean, dip_JP2_std = 70, 2
 dip_dir_JP2_mean, dip_dir_JP2_std = 235, 5
 spacing_JP2 = 10
 mean_length2 = 15.0
-phi2 = 30
-c2 = 10
+phi2_mean, phi2_std = 20, 5
+c2_mean, c2_std = 10, 4
 
 # Generate planes for Joint Set 1
 planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
@@ -297,3 +308,4 @@ df_intersections = process_dataframe(intersection_points, height, cell_width, me
 print(df_intersections)
 plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
 plot_FOS_histogram(df_intersections)
+plot_POS_histogram(df_intersections)
