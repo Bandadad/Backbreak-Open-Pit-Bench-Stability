@@ -255,6 +255,7 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
     # Calculate cell number and probability P_L(wedge)
     df['Cell Number'] = (df['Distance from Crest'] // cell_width).astype(int) + 1
     df["P_L(wedge)"] = np.exp(-df["Intersection Length"] / mean_length1) * np.exp(-df["Intersection Length"] / mean_length2)
+    df['Prob of Failure'] = df['Prob of Sliding'] * df['P_L(wedge)']
     
     # Move 'Message' column to the last position
     df = df[[col for col in df.columns if col != 'Message'] + ['Message']]
@@ -281,7 +282,7 @@ dip_dir_JP1_mean, dip_dir_JP1_std = 105, 5
 spacing_JP1 = 7.5
 mean_length1 = 10.0
 phi1_mean, phi1_std = 20, 5
-c1_mean, c1_std = 50, 10
+c1_mean, c1_std = 0, 0
 
 # Joint Set 2
 dip_JP2_mean, dip_JP2_std = 70, 2
@@ -289,7 +290,7 @@ dip_dir_JP2_mean, dip_dir_JP2_std = 235, 5
 spacing_JP2 = 10
 mean_length2 = 15.0
 phi2_mean, phi2_std = 20, 5
-c2_mean, c2_std = 10, 4
+c2_mean, c2_std = 0, 0
 
 # Generate planes for Joint Set 1
 planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
@@ -304,8 +305,43 @@ filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersect
 # Pandas DataFrame Compilation
 df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
 
+
 # Print and plot the results
 print(df_intersections)
 plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
 plot_FOS_histogram(df_intersections)
 plot_POS_histogram(df_intersections)
+
+# Calculate the total length of the original dataframe
+Nt = len(df_intersections)
+
+# Group by Cell Number and calculate the required values
+def calculate_cell_stability(group):
+    N = len(group)
+    
+    if N == 0:
+        # If the group is empty, set Probability of Stability to 1.0
+        return pd.Series({'Probability of Stability': 1.0})
+    
+    # Calculate the sum of (1 - Prob of Failure)
+    stability_sum = (1 - group['Prob of Failure']).sum()
+    
+    # Apply the formula for Probability of Stability
+    prob_stability = ((Nt - N) / Nt) + (1 / Nt) * stability_sum
+    
+    return pd.Series({'Probability of Stability': prob_stability})
+
+#  Apply the calculation to each grouped dataframe
+df_grouped = df_intersections.groupby('Cell Number').apply(calculate_cell_stability).reset_index()
+
+# Calculate Distance from Crest
+df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
+
+# Plot Probability of Stability vs Distance from Crest
+plt.figure(figsize=(8, 6))
+plt.plot(df_grouped['Distance from Crest'], df_grouped['Probability of Stability'], marker='o')
+plt.title('Probability of Stability vs Distance from Crest')
+plt.xlabel('Distance from Crest (ft)')
+plt.ylabel('Probability of Stability')
+plt.grid(True)
+plt.show()
