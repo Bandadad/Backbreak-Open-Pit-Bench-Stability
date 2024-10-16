@@ -242,17 +242,20 @@ def plot_POS_histogram(df_intersections):
     plt.show()
 
 
-
 def process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2):
     # Create the DataFrame
     df = pd.DataFrame(intersection_points)
     
-    # Calculate additional columns in one step
+    # Calculate additional columns
     df["Wedge Height"] = (height / 2) - df["Y (ft)"]
     df[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Prob of Sliding', 'Message']] = df.apply(calculate_wedge_params, axis=1)
     df["Intersection Length"] = df["Wedge Height"] / np.sin(np.radians(df["Plunge"]))
     
     # Calculate cell number and probability P_L(wedge)
+    # Handle NaN or infinite values in 'Distance from Crest'
+    df['Distance from Crest'] = df['Distance from Crest'].replace([np.inf, -np.inf], np.nan)
+    df = df.dropna(subset=['Distance from Crest'])
+
     df['Cell Number'] = (df['Distance from Crest'] // cell_width).astype(int) + 1
     df["P_L(wedge)"] = np.exp(-df["Intersection Length"] / mean_length1) * np.exp(-df["Intersection Length"] / mean_length2)
     df['Prob of Failure'] = df['Prob of Sliding'] * df['P_L(wedge)']
@@ -261,6 +264,7 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
     df = df[[col for col in df.columns if col != 'Message'] + ['Message']]
     
     return df
+
 
 # Define the number of simulations
 Ns = 20  # Number of simulations
