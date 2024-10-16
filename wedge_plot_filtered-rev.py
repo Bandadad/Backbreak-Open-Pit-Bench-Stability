@@ -78,7 +78,7 @@ def generate_joint_planes(dip_mean, dip_std, dip_dir_mean, dip_dir_std, spacing,
     # Generate random dips and dip directions
     dips = np.random.normal(dip_mean, dip_std, size=num_planes)
     dip_dirs = np.random.normal(dip_dir_mean, dip_dir_std, size=num_planes)
-
+    
     # Compute the normal vectors for the planes
     normals = [compute_normal(dip, dip_dir) for dip, dip_dir in zip(dips, dip_dirs)]
 
@@ -262,60 +262,70 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
     
     return df
 
+# Define the number of simulations
+Ns = 20  # Number of simulations
 
 # Define the bench face orientation - vertical plane (VP)
 dip_VP = 90
-dip_dir_VP = 185
+dip_dir_VP = 195
 
 # Define the dimensions of the simulation window on the bench face
-height = 100
+height = 25
 width = height
 
 # Define Backbreak Cells
-cell_number = 10
+cell_number = 25
 cell_width = width / cell_number
 
 # Probabilistic sampling parameters for Joint Sets
 # Joint Set 1
-dip_JP1_mean, dip_JP1_std = 45, 2
-dip_dir_JP1_mean, dip_dir_JP1_std = 105, 5
-spacing_JP1 = 7.5
-mean_length1 = 10.0
-phi1_mean, phi1_std = 20, 5
+dip_JP1_mean, dip_JP1_std = 72.36, 8.35
+dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
+spacing_JP1 = 3.8
+mean_length1 = 7.54
+phi1_mean, phi1_std = 31, 7
 c1_mean, c1_std = 0, 0
 
 # Joint Set 2
-dip_JP2_mean, dip_JP2_std = 70, 2
-dip_dir_JP2_mean, dip_dir_JP2_std = 235, 5
-spacing_JP2 = 10
-mean_length2 = 15.0
-phi2_mean, phi2_std = 20, 5
+dip_JP2_mean, dip_JP2_std = 51.8, 13.87
+dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 1
+spacing_JP2 = 2.5
+mean_length2 = 12.5
+phi2_mean, phi2_std = 25, 5
 c2_mean, c2_std = 0, 0
 
-# Generate planes for Joint Set 1
-planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
+# Initialize an empty dataframe to store the results of all simulations
+master_df = pd.DataFrame()
 
-# Generate planes for Joint Set 2
-planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2_std, dip_dir_JP2_mean, dip_dir_JP2_std, spacing_JP2, width)
+for i in range(Ns):
+    print(f"Running simulation {i + 1}/{Ns}")
+    
+    # Generate planes for Joint Set 1
+    planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
+    
+    # Generate planes for Joint Set 2
+    planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2_std, dip_dir_JP2_mean, dip_dir_JP2_std, spacing_JP2, width)
+    
+    # Generate intersections
+    filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
+        planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height)
 
-# Generate intersections
-filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
-    planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height)
+    # Process the intersection points into a dataframe
+    df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
 
-# Pandas DataFrame Compilation
-df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
-
+    # Append the result of this simulation to the master dataframe
+    master_df = pd.concat([master_df, df_intersections], ignore_index=True)
 
 # Print and plot the results
-print(df_intersections)
-plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
-plot_FOS_histogram(df_intersections)
-plot_POS_histogram(df_intersections)
+#print(df_intersections)
+#plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
+#plot_FOS_histogram(df_intersections)
+#plot_POS_histogram(df_intersections)
 
-# Calculate the total length of the original dataframe
-Nt = len(df_intersections)
+# Calculate the total length of the original master dataframe
+Nt = len(master_df)
 
-# Group by Cell Number and calculate the required values
+# Group by Cell Number and calculate the required values for aggregated simulations
 def calculate_cell_stability(group):
     N = len(group)
     
@@ -331,16 +341,19 @@ def calculate_cell_stability(group):
     
     return pd.Series({'Probability of Stability': prob_stability})
 
-#  Apply the calculation to each grouped dataframe
-df_grouped = df_intersections.groupby('Cell Number').apply(calculate_cell_stability).reset_index()
+# Apply the calculation to each grouped dataframe
+df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(calculate_cell_stability).reset_index()
+
 
 # Calculate Distance from Crest
 df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
 
+
+plot_FOS_histogram(master_df)
 # Plot Probability of Stability vs Distance from Crest
 plt.figure(figsize=(8, 6))
 plt.plot(df_grouped['Distance from Crest'], df_grouped['Probability of Stability'], marker='o')
-plt.title('Probability of Stability vs Distance from Crest')
+plt.title('Probability of Stability vs Distance from Crest (Aggregated Simulations)')
 plt.xlabel('Distance from Crest (ft)')
 plt.ylabel('Probability of Stability')
 plt.grid(True)
