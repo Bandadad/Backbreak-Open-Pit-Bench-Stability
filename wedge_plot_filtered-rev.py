@@ -285,7 +285,7 @@ cell_width = width / cell_number
 # Joint Set 1
 dip_JP1_mean, dip_JP1_std = 72.36, 8.35
 dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
-spacing_JP1 = 3.8
+spacing_JP1 = 2.5
 mean_length1 = 7.54
 phi1_mean, phi1_std = 31, 7
 c1_mean, c1_std = 0, 0
@@ -304,56 +304,62 @@ master_df = pd.DataFrame()
 for i in range(Ns):
     print(f"Running simulation {i + 1}/{Ns}")
     
-    # Generate planes for Joint Set 1
+    # Generate planes and intersections as before
     planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
-    
-    # Generate planes for Joint Set 2
     planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2_std, dip_dir_JP2_mean, dip_dir_JP2_std, spacing_JP2, width)
-    
-    # Generate intersections
     filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
         planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height)
 
     # Process the intersection points into a dataframe
     df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
 
+    # Add a column for the current simulation (Si)
+    df_intersections['Si'] = i + 1
+
     # Append the result of this simulation to the master dataframe
     master_df = pd.concat([master_df, df_intersections], ignore_index=True)
-
-# Print and plot the results
-#print(df_intersections)
-#plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
-#plot_FOS_histogram(df_intersections)
-#plot_POS_histogram(df_intersections)
 
 # Calculate the total length of the original master dataframe
 Nt = len(master_df)
 
 # Group by Cell Number and calculate the required values for aggregated simulations
 def calculate_cell_stability(group):
-    N = len(group)
+    # N is the number of simulations where the Cell Number exists in the group (at least one failure path)
+    N = group['Si'].nunique()  # Number of unique simulations with this Cell Number
     
     if N == 0:
-        # If the group is empty, set Probability of Stability to 1.0
+        # If no simulations contain this Cell Number, set Probability of Stability to 1.0
         return pd.Series({'Probability of Stability': 1.0})
     
-    # Calculate the sum of (1 - Prob of Failure)
-    stability_sum = (1 - group['Prob of Failure']).sum()
+    # Total number of bench simulations (Ns or N_T)
+    Nt = len(master_df['Si'].unique())
+    
+    # Calculate the summation of products for (1 - P_Lj) for each simulation Si
+    stability_product_sum = 0
+    for si_value in group['Si'].unique():
+        group_si = group[group['Si'] == si_value]
+        
+        # Calculate the product (1 - P_Lj) for all failure paths (J_i) in this Si
+        product_term = 1
+        for index, row in group_si.iterrows():
+            P_Lj = row['P_L(wedge)']  # This is the probability of sufficient length (P_Lj)
+            P_Sj = row['Prob of Sliding']  # This is the probability of sliding (P_Sj)
+            product_term *= (1 - P_Lj) + P_Lj * (1 - P_Sj)  # Apply the product for each failure path
+        
+        # Add the product for this simulation to the total summation
+        stability_product_sum += product_term
     
     # Apply the formula for Probability of Stability
-    prob_stability = ((Nt - N) / Nt) + (1 / Nt) * stability_sum
+    prob_stability = ((Nt - N) / Nt) + (1 / Nt) * stability_product_sum
     
     return pd.Series({'Probability of Stability': prob_stability})
 
 # Apply the calculation to each grouped dataframe
 df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(calculate_cell_stability).reset_index()
 
-
 # Calculate Distance from Crest
 df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
 
-
-plot_FOS_histogram(master_df)
 # Plot Probability of Stability vs Distance from Crest
 plt.figure(figsize=(8, 6))
 plt.plot(df_grouped['Distance from Crest'], df_grouped['Probability of Stability'], marker='o')
