@@ -185,6 +185,7 @@ def process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alp
     # Calculate Plunge and trend of line of intersection (Equations III.46 - III.47)
     plunge_i = np.degrees(np.arcsin(nu * i[2]))  # Equation III.46
     trend_i = np.degrees(np.arctan2(-nu * i[0], -nu * i[1]))  # Equation III.47
+    trend_i = (trend_i + 360) % 360
 
     # Check on wedge geometry 
     # Wedge formation checks

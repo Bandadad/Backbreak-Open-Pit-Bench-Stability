@@ -184,7 +184,11 @@ def generate_intersections(planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_
                         'dip_dir_JP2': dip_dir_JP2
                     })
 
-    return filtered_lines_JP1, filtered_lines_JP2, intersection_points
+    if not intersection_points:
+        print("No valid intersections found for this simulation.")
+        return [], [], []  # Return empty lists to handle this case
+    else:
+        return filtered_lines_JP1, filtered_lines_JP2, intersection_points
 
 
 def plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height):
@@ -267,7 +271,7 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
 
 
 # Define the number of simulations
-Ns = 20  # Number of simulations
+Ns = 40 # Number of simulations
 
 # Define the bench face orientation - vertical plane (VP)
 dip_VP = 90
@@ -283,17 +287,17 @@ cell_width = width / cell_number
 
 # Probabilistic sampling parameters for Joint Sets
 # Joint Set 1
-dip_JP1_mean, dip_JP1_std = 72.36, 8.35
+dip_JP1_mean, dip_JP1_std = 72.35, 8.35
 dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
-spacing_JP1 = 2.5
-mean_length1 = 7.54
+spacing_JP1 = 3.8
+mean_length1 = 8.63
 phi1_mean, phi1_std = 31, 7
 c1_mean, c1_std = 0, 0
 
 # Joint Set 2
 dip_JP2_mean, dip_JP2_std = 51.8, 13.87
-dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 1
-spacing_JP2 = 2.5
+dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
+spacing_JP2 = 6.2
 mean_length2 = 12.5
 phi2_mean, phi2_std = 25, 5
 c2_mean, c2_std = 0, 0
@@ -304,14 +308,22 @@ master_df = pd.DataFrame()
 for i in range(Ns):
     print(f"Running simulation {i + 1}/{Ns}")
     
-    # Generate planes and intersections as before
+    # Generate planes and intersections
     planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
     planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2_std, dip_dir_JP2_mean, dip_dir_JP2_std, spacing_JP2, width)
     filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
         planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height)
 
+    # Check if intersection_points is empty
+    if not intersection_points:
+        print(f"No valid intersections found for simulation {i + 1}. Skipping.")
+        continue  # Skip to the next simulation
+
     # Process the intersection points into a dataframe
     df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
+
+    # Uncomment to see a plot of the wedges being generated
+    # plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
 
     # Add a column for the current simulation (Si)
     df_intersections['Si'] = i + 1
@@ -355,7 +367,7 @@ def calculate_cell_stability(group):
     return pd.Series({'Probability of Stability': prob_stability})
 
 # Apply the calculation to each grouped dataframe
-df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(calculate_cell_stability).reset_index()
+df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(calculate_cell_stability, include_groups=False).reset_index()
 
 # Calculate Distance from Crest
 df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
@@ -365,6 +377,8 @@ plt.figure(figsize=(8, 6))
 plt.plot(df_grouped['Distance from Crest'], df_grouped['Probability of Stability'], marker='o')
 plt.title('Probability of Stability vs Distance from Crest (Aggregated Simulations)')
 plt.xlabel('Distance from Crest (ft)')
+plt.xlim(0, width)
+plt.ylim(0, 1.0)
 plt.ylabel('Probability of Stability')
 plt.grid(True)
 plt.show()
