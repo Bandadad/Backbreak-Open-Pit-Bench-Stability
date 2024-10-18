@@ -312,7 +312,7 @@ def calculate_cell_stability(group, master_df):
 
 def main():
     # Define the number of simulations
-    Ns = 20 # Number of simulations
+    Ns = 40 # Number of simulations
 
     # Define the bench face orientation - vertical plane (VP)
     dip_VP = 90
