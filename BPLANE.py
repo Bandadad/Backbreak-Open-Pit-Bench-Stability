@@ -2,36 +2,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 
-# User inputs
-POC = 1.0 # probability of occurrence
-bench_height = 20
-bench_width = 20
-
-mean_dip = 55
-std_dip = 2
-
-mean_spacing = 1
-std_spacing = 0.5  # Reduced standard deviation
-
-mean_friction_angle = 32
-std_friction_angle = 5
-
-mean_cohesion = 0.010 # MPa
-std_cohesion = 0.00025 # MPa
-
-mean_length = 4.72 # LMU
-
-rock_density = 2700  # kg/m³
-gravity = 9.81  # m/s²
-
-correlation_length = 5  # Correlation length set to 10 meters
-
-# Seed the random number generator for consistency (optional)
-# np.random.seed(42)
-
-# Number of points (realizations)
-N = 256
-dx = bench_height / N  # Spatial step size
+def distance_from_crest(h, plunge, trend, alpha4):
+    # Convert plunge and alpha4 to radians
+    plunge_rad = np.radians(plunge)
+    trend_rad = np.radians(trend)
+    alpha4_rad = np.radians(alpha4)
+    
+    cot_plunge = 1 / np.tan(plunge_rad)
+    angle_diff = trend_rad - alpha4_rad
+    
+    distance = h * cot_plunge * np.cos(angle_diff)
+    
+    return distance
 
 # Function to generate a correlated random field using FFT
 def generate_correlated_field(N, dx, lc, mean, std):
@@ -56,6 +38,43 @@ def generate_correlated_field(N, dx, lc, mean, std):
 
     return field
 
+# User inputs
+
+# Define the bench face orientation - vertical plane (VP)
+dip_VP = 90
+dip_dir_VP = 195
+
+POC = 1.0 # probability of occurrence
+
+bench_height = 20
+bench_width = 100
+
+mean_dip, std_dip = 55, 2
+mean_ddr, std_ddr = 180, 5
+
+mean_spacing = 1
+std_spacing = 0.5  # Reduced standard deviation
+
+mean_friction_angle = 32
+std_friction_angle = 5
+
+mean_cohesion = 0.010 # MPa
+std_cohesion = 0.00025 # MPa
+
+mean_length = 4.72 # LMU
+
+rock_density = 2700  # kg/m³
+gravity = 9.81  # m/s²
+
+correlation_length = 5  # Correlation length set to 10 meters
+
+# Seed the random number generator for consistency (optional)
+# np.random.seed(42)
+
+# Number of points (realizations)
+N = 256
+dx = bench_height / N  # Spatial step size
+
 # Generate correlated fields for spacing and dip
 field_spacing = generate_correlated_field(N, dx, correlation_length, mean_spacing, std_spacing)
 field_dip = generate_correlated_field(N, dx, correlation_length, mean_dip, std_dip)
@@ -72,14 +91,11 @@ SMU = mean_spacing
 FID = np.zeros((3, N))
 FID[0, 0] = uo * SMU  # FID[0,0] - Starting distance from bench toe
 
-# Bench angle A (90 degrees)
-A = 90.0  # degrees
-
 # Mean dip DMU
 DMU = mean_dip
 
 # Convert angles to radians for trigonometric functions
-A_rad = np.radians(A)
+A_rad = np.radians(dip_VP)
 DMU_rad = np.radians(DMU)
 
 cos_A_minus_DMU = np.cos(A_rad - DMU_rad)
@@ -123,8 +139,11 @@ while True:
 
     FID[2, k] = (bench_height - FID[0, k]) / sin_dip  # Required length to reach bench crest
 
+# TO DO  DIP DIR NEEDS TO BE PROBABILISTIC
     # Calculate x-coordinate at bench crest
-    x_crest_k = x_start + FID[2, k] * np.cos(dip_rad)
+    angle_diff = np.radians(abs(dip_dir_VP - mean_ddr))  # Convert angle_diff to radians
+    x_crest_k = x_start + FID[2, k] * np.cos(dip_rad) * np.cos(angle_diff)  # Correct cosine calculation
+
 
     # Check if the fracture exceeds bench width
     if x_crest_k <= bench_width:
