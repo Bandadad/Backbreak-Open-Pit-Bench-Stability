@@ -5,7 +5,7 @@ from wedge_functions import process_wedges
 
 
 # Function to calculate wedge parameters and factor of safety
-def calculate_wedge_params(row):
+def calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP):
     # Extract values from the row
     dip1 = row['dip_JP1']
     dip2 = row['dip_JP2']
@@ -13,11 +13,14 @@ def calculate_wedge_params(row):
     alpha2 = row['dip_dir_JP2']
     H1 = row['Wedge Height']
     
-    # Call the updated process_wedges function
-    trend_i, plunge_i, distance_from_crest, FOS, probability_of_failure, message = process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, dip_dir_VP)  
+    # Call the updated process_wedges function with the passed parameters
+    trend_i, plunge_i, distance_from_crest, FOS, probability_of_failure, message = process_wedges(
+        dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, dip_dir_VP
+    )
 
     # Return the calculated values along with the message
     return pd.Series([trend_i, plunge_i, distance_from_crest, FOS, probability_of_failure, message])
+
 
 
 # Function to compute the normal vector from dip and dip direction
@@ -235,6 +238,7 @@ def plot_FOS_histogram(df_intersections):
     plt.grid(True)
     plt.show()
 
+
 def plot_POS_histogram(df_intersections):
     plt.figure(figsize=(8, 6))
     plt.hist(df_intersections['Prob of Sliding'], bins=50, color='blue', edgecolor='black')
@@ -246,13 +250,18 @@ def plot_POS_histogram(df_intersections):
     plt.show()
 
 
-def process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2):
+def process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP):
     # Create the DataFrame
     df = pd.DataFrame(intersection_points)
     
     # Calculate additional columns
     df["Wedge Height"] = (height / 2) - df["Y (ft)"]
-    df[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Prob of Sliding', 'Message']] = df.apply(calculate_wedge_params, axis=1)
+    
+    # Use lambda to pass additional parameters into calculate_wedge_params
+    df[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Prob of Sliding', 'Message']] = df.apply(
+        lambda row: calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP), axis=1
+    )
+    
     df["Intersection Length"] = df["Wedge Height"] / np.sin(np.radians(df["Plunge"]))
     
     # Calculate cell number and probability P_L(wedge)
@@ -270,72 +279,7 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
     return df
 
 
-# Define the number of simulations
-Ns = 40 # Number of simulations
-
-# Define the bench face orientation - vertical plane (VP)
-dip_VP = 90
-dip_dir_VP = 195
-
-# Define the dimensions of the simulation window on the bench face
-height = 25
-width = height
-
-# Define Backbreak Cells
-cell_number = 25
-cell_width = width / cell_number
-
-# Probabilistic sampling parameters for Joint Sets
-# Joint Set 1
-dip_JP1_mean, dip_JP1_std = 72.35, 8.35
-dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
-spacing_JP1 = 3.8
-mean_length1 = 8.63
-phi1_mean, phi1_std = 31, 7
-c1_mean, c1_std = 0, 0
-
-# Joint Set 2
-dip_JP2_mean, dip_JP2_std = 51.8, 13.87
-dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
-spacing_JP2 = 6.2
-mean_length2 = 12.5
-phi2_mean, phi2_std = 25, 5
-c2_mean, c2_std = 0, 0
-
-# Initialize an empty dataframe to store the results of all simulations
-master_df = pd.DataFrame()
-
-for i in range(Ns):
-    print(f"Running simulation {i + 1}/{Ns}")
-    
-    # Generate planes and intersections
-    planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
-    planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2_std, dip_dir_JP2_mean, dip_dir_JP2_std, spacing_JP2, width)
-    filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
-        planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height)
-
-    # Check if intersection_points is empty
-    if not intersection_points:
-        print(f"No valid intersections found for simulation {i + 1}. Skipping.")
-        continue  # Skip to the next simulation
-
-    # Process the intersection points into a dataframe
-    df_intersections = process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2)
-
-    # Uncomment to see a plot of the wedges being generated
-    # plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
-
-    # Add a column for the current simulation (Si)
-    df_intersections['Si'] = i + 1
-
-    # Append the result of this simulation to the master dataframe
-    master_df = pd.concat([master_df, df_intersections], ignore_index=True)
-
-# Calculate the total length of the original master dataframe
-Nt = len(master_df)
-
-# Group by Cell Number and calculate the required values for aggregated simulations
-def calculate_cell_stability(group):
+def calculate_cell_stability(group, master_df):
     # N is the number of simulations where the Cell Number exists in the group (at least one failure path)
     N = group['Si'].nunique()  # Number of unique simulations with this Cell Number
     
@@ -366,19 +310,91 @@ def calculate_cell_stability(group):
     
     return pd.Series({'Probability of Stability': prob_stability})
 
-# Apply the calculation to each grouped dataframe
-df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(calculate_cell_stability, include_groups=False).reset_index()
+def main():
+    # Define the number of simulations
+    Ns = 20 # Number of simulations
 
-# Calculate Distance from Crest
-df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
+    # Define the bench face orientation - vertical plane (VP)
+    dip_VP = 90
+    dip_dir_VP = 195
 
-# Plot Probability of Stability vs Distance from Crest
-plt.figure(figsize=(8, 6))
-plt.plot(df_grouped['Distance from Crest'], df_grouped['Probability of Stability'], marker='o')
-plt.title('Probability of Stability vs Distance from Crest (Aggregated Simulations)')
-plt.xlabel('Distance from Crest (ft)')
-plt.xlim(0, width)
-plt.ylim(0, 1.0)
-plt.ylabel('Probability of Stability')
-plt.grid(True)
-plt.show()
+    # Define the dimensions of the simulation window on the bench face
+    height = 25
+    width = height
+
+    # Define Backbreak Cells
+    cell_number = 12
+    cell_width = width / cell_number
+
+    # Probabilistic sampling parameters for Joint Sets
+    # Joint Set 1
+    dip_JP1_mean, dip_JP1_std = 72.35, 8.35
+    dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
+    spacing_JP1 = 3.8
+    mean_length1 = 8.63
+    phi1_mean, phi1_std = 31, 7
+    c1_mean, c1_std = 0, 0
+
+    # Joint Set 2
+    dip_JP2_mean, dip_JP2_std = 51.8, 13.87
+    dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
+    spacing_JP2 = 6.2
+    mean_length2 = 12.5
+    phi2_mean, phi2_std = 25, 5
+    c2_mean, c2_std = 0, 0
+
+    # Initialize an empty dataframe to store the results of all simulations
+    master_df = pd.DataFrame()
+
+    for i in range(Ns):
+        print(f"Running simulation {i + 1}/{Ns}")
+        
+        # Generate planes and intersections
+        planes_JP1, dips_JP1, dip_dirs_JP1 = generate_joint_planes(dip_JP1_mean, dip_JP1_std, dip_dir_JP1_mean, dip_dir_JP1_std, spacing_JP1, width)
+        planes_JP2, dips_JP2, dip_dirs_JP2 = generate_joint_planes(dip_JP2_mean, dip_JP2_std, dip_dir_JP2_mean, dip_dir_JP2_std, spacing_JP2, width)
+        filtered_lines_JP1, filtered_lines_JP2, intersection_points = generate_intersections(
+            planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_JP2, dip_dirs_JP2, dip_VP, dip_dir_VP, width, height)
+
+        # Check if intersection_points is empty
+        if not intersection_points:
+            print(f"No valid intersections found for simulation {i + 1}. Skipping.")
+            continue  # Skip to the next simulation
+
+        # Process the intersection points into a dataframe
+        df_intersections = process_dataframe(
+            intersection_points, height, cell_width, mean_length1, mean_length2, c1_mean, c1_std, phi1_mean, phi1_std,
+            c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP
+        )
+        # Uncomment to see a plot of the wedges being generated
+        #plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
+        
+        # Add a column for the current simulation (Si)
+        df_intersections['Si'] = i + 1
+
+        # Append the result of this simulation to the master dataframe
+        master_df = pd.concat([master_df, df_intersections], ignore_index=True)
+
+    # Calculate the total length of the original master dataframe
+    Nt = len(master_df)
+
+    # Group by Cell Number and calculate the required values for aggregated simulations
+    # Apply the calculation to each grouped dataframe
+    df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(
+        lambda group: calculate_cell_stability(group, master_df), include_groups=False).reset_index()
+
+    # Calculate Distance from Crest
+    df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
+
+    # Plot Probability of Stability vs Distance from Crest
+    plt.figure(figsize=(8, 6))
+    plt.plot(df_grouped['Distance from Crest'], df_grouped['Probability of Stability'], marker='o')
+    plt.title('Probability of Stability vs Distance from Crest (Aggregated Simulations)')
+    plt.xlabel('Distance from Crest (ft)')
+    plt.xlim(0, width)
+    plt.ylim(0, 1.0)
+    plt.ylabel('Probability of Stability')
+    plt.grid(True)
+    plt.show()
+
+if __name__ == "__main__":
+    main()
