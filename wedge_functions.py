@@ -124,7 +124,7 @@ def line_of_intersection(n1, n2):
     return intersection_vector
 
 
-def process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, alpha4):
+def process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, alpha4, gamma):
     # Input angles and geometry (from the example in the PDF)
     dip3 = 0   # Dip of plane 3 (degrees)
     dip4 = 90  # Dip of slope face (degrees)
@@ -132,10 +132,8 @@ def process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alp
     alpha3 = alpha4  # Dip direction of plane 3 (degrees)
     alpha5 = alpha4  # Dip direction of plane 5 (degrees)
 
-    # Assumed values
     eta = 1   # +1 since tension crack does not have an overhang
-    gamma = 165  # Unit weight of rock (lb/ft^3)
-
+    
     # Calculate the unit normal vectors for all planes
     a = unit_normal_vector(dip1, alpha1)  # Plane 1 (normal vector a)
     b = unit_normal_vector(dip2, alpha2)  # Plane 2 (normal vector b)
@@ -190,11 +188,11 @@ def process_wedges(dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alp
     # Check on wedge geometry 
     # Wedge formation checks
     if p * i[2] < 0 or n * q * i[2] < 0:
-        return pd.Series([trend_i, plunge_i, np.nan, 9999, 9999, "No wedge formed"])
+        return pd.Series([trend_i, plunge_i, np.nan, 9999, 1.0, "No wedge formed"])
 
     # Tension crack checks
     if epsilon * eta * q5 * i[2] < 0 or h5 < 0 or abs(m5 * h5 / (m * h)) > 1 or abs(n * q5 * m5 * h5 / (n5 * q * m * h)) > 1:
-        return pd.Series([trend_i, plunge_i, np.nan, 9999, 9999, "Tension Crack is invalid"])
+        return pd.Series([trend_i, plunge_i, np.nan, 9999, 1.0, "Tension Crack is invalid"])
 
     # Calculate areas of faces and weight of wedge
     A1 = abs(m * q * h**2 - m5 * q5 * h5**2) / (2 * abs(p))  
