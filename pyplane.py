@@ -7,8 +7,8 @@ import pandas as pd
 def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing, 
                       mean_dip, std_dip, mean_ddr, std_ddr, 
                       bench_height, cell_width, mean_length, rock_density, 
-                      gravity, mean_friction_angle, std_friction_angle, 
-                      mean_cohesion, std_cohesion):
+                      mean_friction_angle, std_friction_angle, 
+                      mean_cohesion, std_cohesion, dip_dir_VP):
     
     # Seed the random number generator for consistency (optional)
     np.random.seed(42 + sim)  # Different seed for each simulation
@@ -74,7 +74,7 @@ def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing,
         FID[2, k] = (bench_height - FID[0, k]) / sin_dip  # Required length to reach bench crest
 
         # Calculate x-coordinate at bench crest with probabilistic dip direction
-        angle_diff = np.radians(abs(195 - field_dip_dir[k]))  # Dip direction of VP = 195
+        angle_diff = np.radians(abs(dip_dir_VP - field_dip_dir[k]))  # Difference from Dip direction of VP 
         x_crest_k = FID[2, k] * np.cos(dip_rad) * np.cos(angle_diff)  # Correct cosine calculation
 
         # Calculate probability of sufficient length
@@ -89,14 +89,18 @@ def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing,
         c_points = [mean_cohesion - np.sqrt(3) * std_cohesion, mean_cohesion + np.sqrt(3) * std_cohesion]
         weights = [0.25, 0.25, 0.25, 0.25]  # Corresponding weights for FS values
 
-        area = FID[2, k] * 1  # m², assuming unit width
-        volume = area * 1  # m³, assuming unit width
-        W = volume * rock_density * gravity  # Weight of the block in Newtons
+        area = FID[2, k] * 1  # ft², assuming unit width
+
+        height_of_block = bench_height - FID[0, k]
+        base_of_block = x_crest_k 
+        block_volume = 0.5 * base_of_block * height_of_block * 1 # Assumes unit width
+
+        W = block_volume * rock_density  # Weight of the block in pounds
 
         FS_values = []
         for phi in phi_points:
             for c in c_points:
-                FS = (c * area * 1e6 + W * np.cos(dip_rad) * np.tan(np.radians(phi))) / (W * np.sin(dip_rad))
+                FS = (c * area + W * np.cos(dip_rad) * np.tan(np.radians(phi))) / (W * np.sin(dip_rad))
                 FS_values.append(FS)
 
         FS_mean = np.mean(FS_values)
@@ -137,8 +141,8 @@ def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing,
 def process_simulations(Ns, N, dx, correlation_length, mean_spacing, std_spacing, 
                         mean_dip, std_dip, mean_ddr, std_ddr, 
                         bench_height, cell_width, mean_length, rock_density, 
-                        gravity, mean_friction_angle, std_friction_angle, 
-                        mean_cohesion, std_cohesion):
+                        mean_friction_angle, std_friction_angle, 
+                        mean_cohesion, std_cohesion, dip_dir_VP):
     """
     Runs multiple simulations, aggregates the results, and returns a master dataframe.
 
@@ -156,12 +160,11 @@ def process_simulations(Ns, N, dx, correlation_length, mean_spacing, std_spacing
         bench_height (float): Height of the bench face.
         cell_width (float): Width of each backbreak cell.
         mean_length (float): Mean fracture length.
-        rock_density (float): Density of the rock (kg/m³).
-        gravity (float): Gravitational acceleration (m/s²).
+        rock_density (float): Density of the rock (lb/ft³).
         mean_friction_angle (float): Mean friction angle (degrees).
         std_friction_angle (float): Standard deviation of friction angle (degrees).
-        mean_cohesion (float): Mean cohesion (MPa).
-        std_cohesion (float): Standard deviation of cohesion (MPa).
+        mean_cohesion (float): Mean cohesion (psf).
+        std_cohesion (float): Standard deviation of cohesion (psf).
 
     Returns:
         pd.DataFrame: A master dataframe containing the aggregated results of all simulations.
@@ -178,8 +181,8 @@ def process_simulations(Ns, N, dx, correlation_length, mean_spacing, std_spacing
         result = simulate_fracture(
             sim, N, dx, correlation_length, mean_spacing, std_spacing, 
             mean_dip, std_dip, mean_ddr, std_ddr, bench_height, 
-            cell_width, mean_length, rock_density, gravity, 
-            mean_friction_angle, std_friction_angle, mean_cohesion, std_cohesion
+            cell_width, mean_length, rock_density,  
+            mean_friction_angle, std_friction_angle, mean_cohesion, std_cohesion, dip_dir_VP
         )
         
         # Extract fracture data from the result
@@ -295,7 +298,7 @@ def plot_probability_of_stability(df_grouped, width):
     plt.figure(figsize=(8, 6))
     plt.plot(df_grouped['Distance from Crest'], df_grouped['Probability of Stability'], marker='o')
     plt.title('Probability of Stability vs Distance from Crest (Aggregated Simulations)')
-    plt.xlabel('Distance from Crest (m)')
+    plt.xlabel('Distance from Crest (ft)')
     plt.xlim(0, width)
     plt.ylim(0, 1.0)
     plt.ylabel('Probability of Stability')
@@ -332,8 +335,8 @@ def plot_fractures(FID_filtered, num_fractures, bench_height, width):
     # Draw the bench face
     plt.plot([0, 0], [0, bench_height], 'k-', linewidth=2)
 
-    plt.xlabel('Bench Width (m)')
-    plt.ylabel('Bench Height (m)')
+    plt.xlabel('Bench Width (ft)')
+    plt.ylabel('Bench Height (ft)')
     plt.title('Simulated Fractures within Bench Width')
     plt.xlim(0, width)
     plt.ylim(0, bench_height)
@@ -351,7 +354,7 @@ def plot_probability_of_exceeding_length(x_crest, prob_L_exceeds_required):
     """
     plt.figure(figsize=(8, 6))
     plt.plot(x_crest, prob_L_exceeds_required, 'bo-')
-    plt.xlabel('Horizontal Position along Bench Crest (m)')
+    plt.xlabel('Horizontal Position along Bench Crest (ft)')
     plt.ylabel('Probability P[L > Required Length]')
     plt.title('Probability of Fracture Length Exceeding Required Length')
     plt.grid(True)
@@ -368,7 +371,7 @@ def plot_probability_of_sliding(x_crest, prob_sliding):
     """
     plt.figure(figsize=(8, 6))
     plt.plot(x_crest, prob_sliding, 'ro-')
-    plt.xlabel('Horizontal Position along Bench Crest (m)')
+    plt.xlabel('Horizontal Position along Bench Crest (ft)')
     plt.ylabel('Probability of Sliding')
     plt.title('Probability of Sliding vs Position along Bench Crest')
     plt.grid(True)
@@ -377,23 +380,30 @@ def plot_probability_of_sliding(x_crest, prob_sliding):
 
 def main():
     # User input and main logic
+    # Define simulation parameters
     Ns = 20 # Number of bench simulations to run
     N = 256 # Mumber of fracture realizations to attempt per simulation
-    height = 25
-    width = height
+
+    
+    # Define the bench face orientation and dimensions  - vertical plane (VP)
+    dip_VP = 90
+    dip_dir_VP = 195
+    height = 25 # ft
+    width = height # ft 
     cell_number = 12
     cell_width = width / cell_number
+    rock_density = 165 # pcf
+ 
     mean_dip, std_dip = 55, 8
     mean_ddr, std_ddr = 180, 5
-    mean_spacing = 2.5
+    mean_spacing = 2.5 # ft
     std_spacing = 0.5
     mean_friction_angle = 35
     std_friction_angle = 2
-    mean_cohesion = 0.00
+    mean_cohesion = 0.00 # psf
     std_cohesion = 0.0
-    mean_length = 7.93
-    rock_density = 2700
-    gravity = 9.81
+    mean_length = 7.93 # ft
+
     correlation_length = 10
 
      # Define dx (spatial step size)
@@ -402,8 +412,8 @@ def main():
     master_df = process_simulations(Ns, N, dx, correlation_length, mean_spacing, std_spacing, 
                                     mean_dip, std_dip, mean_ddr, std_ddr, 
                                     height, cell_width, mean_length, rock_density, 
-                                    gravity, mean_friction_angle, std_friction_angle, 
-                                    mean_cohesion, std_cohesion)
+                                    mean_friction_angle, std_friction_angle, 
+                                    mean_cohesion, std_cohesion, dip_dir_VP)
 
     # Group by Cell Number and calculate stability
     df_grouped = master_df.groupby('Cell Number').apply(lambda group: calculate_cell_stability(group, master_df), include_groups=False).reset_index()

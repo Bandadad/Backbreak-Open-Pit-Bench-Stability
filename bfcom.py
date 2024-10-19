@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 bench_height = 25  # Given bench height
 bench_width = 25   # Given bench width
 PS_POC = 0.75  # Plane Shear Probability of Occurrence
-WF_POC = 0.125 # Joint Probability of Occurrence of Wedge Failures
+WF_POC = 0.25 # Joint Probability of Occurrence of Wedge Failures
 
 bfa_shift = 10  # Shift the BFA due to blasting disturbance
 
