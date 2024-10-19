@@ -1,6 +1,22 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+################
+# Introduction #
+################
+
+# This code can be used to combine planar and wedge failure modes to generate a combined plot of Probability of Stability vs Distance from Crest.
+# To combine failure modes, the user will need an estimate of the probability of occurrence of the planar mode and the proobability of occurrence
+# of the shorter joint set forming the wedges.
+#
+# These sets should be followed: 
+# 1. Calculate the Joint Set Length Factor (JSLF), which is the mean length of the joint sets, weighted by POC.
+#    JSLF = POC(s) * Lp + POC(w) * Lw / (POC(s) + POC(w))
+# 2. Run BPLANE.py and BWEDGE.py using the JSLF as the mean length of the planar set and as the mean length of both wedge sets
+# 3. Enter the PS_POC and WF_POC below to match the values used in calculating the JSLF
+# 4. The generated plot and combined.csv file import the indiviual results and present the joint probability of stability
+
+
 # Variables
 PS_POC = 0.75  # Plane Shear Probability of Occurrence
 WF_POC = 0.125 # Joint Probability of Occurrence of Wedge Failures
