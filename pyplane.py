@@ -402,7 +402,7 @@ def main():
     std_friction_angle = 2
     mean_cohesion = 0.00 # psf
     std_cohesion = 0.0
-    mean_length = 7.93 # ft
+    mean_length = 11 # ft
 
     correlation_length = 10
 

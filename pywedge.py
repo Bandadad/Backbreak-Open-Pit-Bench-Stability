@@ -326,7 +326,7 @@ def calculate_cell_stability(group, master_df):
 
 def main():
     # Define the number of simulations
-    Ns = 40 # Number of simulations
+    Ns = 20 # Number of simulations
 
     # Define the bench face orientation - vertical plane (VP)
     dip_VP = 90
@@ -346,7 +346,7 @@ def main():
     dip_JP1_mean, dip_JP1_std = 72.35, 8.35
     dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
     spacing_JP1 = 3.8
-    mean_length1 = 7.93
+    mean_length1 = 11
     phi1_mean, phi1_std = 31, 7
     c1_mean, c1_std = 0, 0
 
@@ -354,7 +354,7 @@ def main():
     dip_JP2_mean, dip_JP2_std = 51.8, 13.87
     dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
     spacing_JP2 = 6.2
-    mean_length2 = 7.93
+    mean_length2 = 11
     phi2_mean, phi2_std = 25, 5
     c2_mean, c2_std = 0, 0
 
