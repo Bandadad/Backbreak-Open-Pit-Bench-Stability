@@ -201,9 +201,11 @@ def process_simulations(Ns, N, dx, correlation_length, mean_spacing, std_spacing
             'Probability of Stability': prob_stability,
             'Simulation': sim + 1,  # Simulation number
             'Probability of Length Exceeds Required': prob_L_exceeds_required,
-            'Probability of Sliding': prob_sliding
+            'Probability of Sliding': prob_sliding,
+            'Starting Distance': FID_filtered[0, :],
+            'Dip': FID_filtered[1, :],
+            'Required Length': FID_filtered[2, :],
         }
-        
         df_sim = pd.DataFrame(data)
 
         # Assign Cell Number based on Distance from Crest
@@ -306,23 +308,32 @@ def plot_probability_of_stability(df_grouped, width):
     plt.show()
 
 
-def plot_fractures(FID_filtered, num_fractures, bench_height, width):
+def plot_fractures(master_df, simulation_number, bench_height, width):
     """
-    Plots the fractures within the bench height and width.
+    Plots the fractures within the bench height and width for a specific simulation.
 
     Args:
-        FID_filtered (np.array): Array of filtered fracture data (position, dip, length).
-        num_fractures (int): Number of fractures to plot.
+        master_df (pd.DataFrame): DataFrame containing the aggregated simulation results.
+        simulation_number (int): The simulation number to plot.
         bench_height (float): Height of the bench.
         width (float): Width of the bench.
     """
+    # Filter the data for the specified simulation number
+    df_sim = master_df[master_df['Simulation'] == simulation_number]
+    
+    num_fractures = len(df_sim)
+    
+    if num_fractures == 0:
+        print(f"No fractures found for simulation {simulation_number}.")
+        return
+
     plt.figure(figsize=(8, bench_height / width * 8))
     
     # Plot each fracture line
-    for i in range(num_fractures):
-        y_start = FID_filtered[0, i]  # Starting vertical position
-        dip = FID_filtered[1, i]  # Fracture dip
-        length = FID_filtered[2, i]  # Fracture length
+    for index, row in df_sim.iterrows():
+        y_start = row['Starting Distance']  # Starting vertical position
+        dip = row['Dip']  # Fracture dip
+        length = row['Required Length']  # Fracture length
 
         # Calculate x and y coordinates of the fracture line
         x_start = 0  # Starting at the bench face
@@ -337,43 +348,9 @@ def plot_fractures(FID_filtered, num_fractures, bench_height, width):
 
     plt.xlabel('Bench Width (ft)')
     plt.ylabel('Bench Height (ft)')
-    plt.title('Simulated Fractures within Bench Width')
+    plt.title(f'Simulated Fractures within Bench Width (Simulation {simulation_number})')
     plt.xlim(0, width)
     plt.ylim(0, bench_height)
-    plt.grid(True)
-    plt.show()
-
-
-def plot_probability_of_exceeding_length(x_crest, prob_L_exceeds_required):
-    """
-    Plots Probability that Fracture Length exceeds the Required Length vs Horizontal Position.
-
-    Args:
-        x_crest (np.array): Horizontal positions along the bench crest.
-        prob_L_exceeds_required (np.array): Probabilities that the fracture length exceeds the required length.
-    """
-    plt.figure(figsize=(8, 6))
-    plt.plot(x_crest, prob_L_exceeds_required, 'bo-')
-    plt.xlabel('Horizontal Position along Bench Crest (ft)')
-    plt.ylabel('Probability P[L > Required Length]')
-    plt.title('Probability of Fracture Length Exceeding Required Length')
-    plt.grid(True)
-    plt.show()
-
-
-def plot_probability_of_sliding(x_crest, prob_sliding):
-    """
-    Plots Probability of Sliding vs Horizontal Position along Bench Crest.
-
-    Args:
-        x_crest (np.array): Horizontal positions along the bench crest.
-        prob_sliding (np.array): Probabilities of sliding for each fracture.
-    """
-    plt.figure(figsize=(8, 6))
-    plt.plot(x_crest, prob_sliding, 'ro-')
-    plt.xlabel('Horizontal Position along Bench Crest (ft)')
-    plt.ylabel('Probability of Sliding')
-    plt.title('Probability of Sliding vs Position along Bench Crest')
     plt.grid(True)
     plt.show()
 
@@ -384,7 +361,6 @@ def main():
     Ns = 20 # Number of bench simulations to run
     N = 256 # Mumber of fracture realizations to attempt per simulation
 
-    
     # Define the bench face orientation and dimensions  - vertical plane (VP)
     dip_VP = 90
     dip_dir_VP = 195
@@ -423,16 +399,11 @@ def main():
     
     # Plot results
     plot_probability_of_stability(df_grouped, width)
-    # Other plots can be added similarly...see function list
+    # Plot fractures for a specific simulation
+    simulation_number = 10  # Replace with the desired simulation number
+    plot_fractures(master_df, simulation_number, height, width)
     
 if __name__ == "__main__":
     main()
 
 
-# Optional: Print probabilities and positions
-# for i in range(num_fractures):
-#     print(f"Fracture {i+1}: x_crest = {x_crest[i]:.2f} m, "
-#           f"Required Length = {FID_filtered[2, i]:.2f} m, "
-#           f"P[L > Required Length] = {prob_L_exceeds_required[i]:.4f}, "
-#           f"Probability of Sliding = {prob_sliding[i]:.4f}, "
-#           f"Probability of Stability = {prob_stability[i]:.4f}")
