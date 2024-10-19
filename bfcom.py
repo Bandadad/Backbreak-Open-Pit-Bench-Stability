@@ -27,8 +27,8 @@ WF_POC = 0.125 # Joint Probability of Occurrence of Wedge Failures
 bfa_shift = 10  # Shift the BFA due to blasting disturbance
 
 # File paths
-bplane_file = 'BPlane_out.csv'
-bwedge_file = 'BWedge_out.csv'
+bplane_file = 'pyplane_out.csv'
+bwedge_file = 'pywedge_out.csv'
 
 # Read in CSV files
 bplane_df = pd.read_csv(bplane_file)

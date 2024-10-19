@@ -409,7 +409,7 @@ def main():
     df_grouped = master_df.groupby('Cell Number').apply(lambda group: calculate_cell_stability(group, master_df), include_groups=False).reset_index()
     df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
     df_grouped = fill_missing_cells(df_grouped, cell_number, cell_width)
-    df_grouped.to_csv('BPlane_out.csv', index=False)
+    df_grouped.to_csv('pyplane_out.csv', index=False)
     
     # Plot results
     plot_probability_of_stability(df_grouped, width)

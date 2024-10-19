@@ -400,7 +400,7 @@ def main():
     # Calculate Distance from Crest
     df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
     df_grouped = fill_missing_cells(df_grouped, cell_number, cell_width)
-    df_grouped.to_csv('BWedge_out.csv', index=False)
+    df_grouped.to_csv('pywedge_out.csv', index=False)
     plot_FOS_histogram(master_df)
 
     # Plot Probability of Stability vs Distance from Crest
