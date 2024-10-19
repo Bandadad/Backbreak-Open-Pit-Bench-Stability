@@ -5,7 +5,7 @@ from wedge_functions import process_wedges
 
 
 # Function to calculate wedge parameters and factor of safety
-def calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP):
+def calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP, gamma):
     # Extract values from the row
     dip1 = row['dip_JP1']
     dip2 = row['dip_JP2']
@@ -15,7 +15,7 @@ def calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c
     
     # Call the updated process_wedges function with the passed parameters
     trend_i, plunge_i, distance_from_crest, FOS, probability_of_failure, message = process_wedges(
-        dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, dip_dir_VP
+        dip1, alpha1, c1_mean, c1_std, phi1_mean, phi1_std, dip2, alpha2, c2_mean, c2_std, phi2_mean, phi2_std, H1, dip_dir_VP, gamma
     )
 
     # Return the calculated values along with the message
@@ -250,7 +250,21 @@ def plot_POS_histogram(df_intersections):
     plt.show()
 
 
-def process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP):
+def fill_missing_cells(df_grouped, cell_number, cell_width):
+    # Generate a complete sequence of Cell Numbers
+    all_cells = pd.DataFrame({'Cell Number': range(1, cell_number + 1)})
+    
+    # Merge with the existing data to find missing Cell Numbers
+    df_filled = pd.merge(all_cells, df_grouped, on='Cell Number', how='left')
+    
+    # For rows with missing values, fill with specified values
+    df_filled['Probability of Stability'] = df_filled['Probability of Stability'].fillna(1.0)
+    df_filled['Distance from Crest'] = df_filled['Cell Number'] * cell_width - 0.5 * cell_width
+    
+    return df_filled
+
+
+def process_dataframe(intersection_points, height, cell_width, mean_length1, mean_length2, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP, gamma):
     # Create the DataFrame
     df = pd.DataFrame(intersection_points)
     
@@ -259,7 +273,7 @@ def process_dataframe(intersection_points, height, cell_width, mean_length1, mea
     
     # Use lambda to pass additional parameters into calculate_wedge_params
     df[['Trend', 'Plunge', 'Distance from Crest', 'Factor of Safety', 'Prob of Sliding', 'Message']] = df.apply(
-        lambda row: calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP), axis=1
+        lambda row: calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP, gamma), axis=1
     )
     
     df["Intersection Length"] = df["Wedge Height"] / np.sin(np.radians(df["Plunge"]))
@@ -321,6 +335,7 @@ def main():
     # Define the dimensions of the simulation window on the bench face
     height = 25
     width = height
+    gamma = 165  # Unit weight of rock (lb/ft^3)
 
     # Define Backbreak Cells
     cell_number = 12
@@ -331,7 +346,7 @@ def main():
     dip_JP1_mean, dip_JP1_std = 72.35, 8.35
     dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
     spacing_JP1 = 3.8
-    mean_length1 = 8.5
+    mean_length1 = 4.5
     phi1_mean, phi1_std = 31, 7
     c1_mean, c1_std = 0, 0
 
@@ -339,7 +354,7 @@ def main():
     dip_JP2_mean, dip_JP2_std = 51.8, 13.87
     dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
     spacing_JP2 = 6.2
-    mean_length2 = 8.5
+    mean_length2 = 4.5
     phi2_mean, phi2_std = 25, 5
     c2_mean, c2_std = 0, 0
 
@@ -363,7 +378,7 @@ def main():
         # Process the intersection points into a dataframe
         df_intersections = process_dataframe(
             intersection_points, height, cell_width, mean_length1, mean_length2, c1_mean, c1_std, phi1_mean, phi1_std,
-            c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP
+            c2_mean, c2_std, phi2_mean, phi2_std, dip_dir_VP, gamma
         )
         # Uncomment to see a plot of the wedges being generated
         #plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height)
@@ -384,6 +399,7 @@ def main():
 
     # Calculate Distance from Crest
     df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
+    df_grouped = fill_missing_cells(df_grouped, cell_number, cell_width)
     df_grouped.to_csv('BWedge_out.csv', index=False)
     plot_FOS_histogram(master_df)
 

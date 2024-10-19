@@ -2,8 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Variables
-PS_POC = 0.25  # Plane Shear Probability of Occurrence
-WF_POC = 0.25 # Joint Probability of Occurrence of Wedge Failures
+PS_POC = 0.75  # Plane Shear Probability of Occurrence
+WF_POC = 0.125 # Joint Probability of Occurrence of Wedge Failures
 
 # File paths
 bplane_file = 'BPlane_out.csv'
