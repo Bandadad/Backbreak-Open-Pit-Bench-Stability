@@ -49,6 +49,7 @@ def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing,
     prob_sliding = []  # Probability of sliding for each fracture
     prob_L_exceeds_required = []  # Probability that L > required length
     prob_stability = []  # Probability of stability for each fracture
+    FS_values = []  # Factor of Safety values for each fracture  (This was missing)
 
     # Loop through fractures
     k = 0
@@ -97,14 +98,14 @@ def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing,
 
         W = block_volume * rock_density  # Weight of the block in pounds
 
-        FS_values = []
+        FS_values_k = []  # Store FS values for the current fracture
         for phi in phi_points:
             for c in c_points:
                 FS = (c * area + W * np.cos(dip_rad) * np.tan(np.radians(phi))) / (W * np.sin(dip_rad))
-                FS_values.append(FS)
+                FS_values_k.append(FS)
 
-        FS_mean = np.mean(FS_values)
-        FS_std = np.std(FS_values)
+        FS_mean = np.mean(FS_values_k)
+        FS_std = np.std(FS_values_k)
 
         # Calculate probability of sliding (FS <= 1)
         if FS_std == 0:
@@ -112,6 +113,9 @@ def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing,
         else:
             Pf = norm.cdf((1 - FS_mean) / FS_std)
         prob_sliding.append(Pf)
+
+        # Store FS values for each fracture
+        FS_values.append(FS_mean)  # Append the mean FS value for the fracture
 
         # Calculate probability of stability
         P_stability = 1 - (P_L * Pf)
@@ -135,6 +139,7 @@ def simulate_fracture(sim, N, dx, correlation_length, mean_spacing, std_spacing,
         'prob_L_exceeds_required': prob_L_exceeds_required,
         'prob_stability': prob_stability,
         'FID_filtered': FID_filtered,
+        'Factor of Safety': FS_values  # Ensure Factor of Safety is returned
     }
 
 
@@ -191,6 +196,7 @@ def process_simulations(Ns, N, dx, correlation_length, mean_spacing, std_spacing
         prob_L_exceeds_required = result['prob_L_exceeds_required']
         prob_sliding = result['prob_sliding']
         FID_filtered = result['FID_filtered']
+        FS_values = result['Factor of Safety']
 
         # Number of fractures in this simulation
         num_fractures = len(x_crest)
@@ -205,6 +211,7 @@ def process_simulations(Ns, N, dx, correlation_length, mean_spacing, std_spacing
             'Starting Distance': FID_filtered[0, :],
             'Dip': FID_filtered[1, :],
             'Required Length': FID_filtered[2, :],
+            'Factor of Safety': FS_values 
         }
         df_sim = pd.DataFrame(data)
 
@@ -308,6 +315,17 @@ def plot_probability_of_stability(df_grouped, width):
     plt.show()
 
 
+def plot_FOS_histogram(df):
+    plt.figure(figsize=(8, 6))
+    plt.hist(df['Factor of Safety'], bins=50, color='blue', edgecolor='black')
+    plt.axvline(x=1, color='red', linestyle='--', linewidth=2, label='FOS = 1')
+    plt.title('Histogram of Factor of Safety Values')
+    plt.xlabel('Factor of Safety')
+    plt.ylabel('Frequency')
+    plt.grid(True)
+    plt.show()
+
+
 def plot_fractures(master_df, simulation_number, bench_height, width):
     """
     Plots the fractures within the bench height and width for a specific simulation.
@@ -402,6 +420,7 @@ def main():
     # Plot fractures for a specific simulation
     simulation_number = 10  # Replace with the desired simulation number
     plot_fractures(master_df, simulation_number, height, width)
+    plot_FOS_histogram(master_df)
     
 if __name__ == "__main__":
     main()
