@@ -65,7 +65,9 @@ df_plot = pd.DataFrame({
     'Probability of Stability': joint_pos
 })
 
-# Plot Probability of Stability vs Distance from Crest
+#####################
+# First Plot: Probability of Stability vs Distance from Crest
+#####################
 plt.figure(figsize=(8, 6))
 plt.plot(df_plot['Distance from Crest (m)'], df_plot['Probability of Stability'], marker='o')
 plt.title('Probability of Stability vs Distance from Crest')
@@ -79,7 +81,6 @@ plt.show()
 #####################
 # Second plot: Cumulative Probability of BFA < x #
 #####################
-
 # Compute the Bench Face Angle (BFA) in degrees
 df_plot['BFA'] = np.degrees(np.arctan(bench_height / df_plot['Distance from Crest (m)']))
 
