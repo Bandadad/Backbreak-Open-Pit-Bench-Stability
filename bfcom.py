@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 # To combine failure modes, the user will need an estimate of the probability of occurrence of the planar mode and the proobability of occurrence
 # of the shorter joint set forming the wedges.
 #
-# These sets should be followed: 
+# These steps should be followed: 
 # 1. Calculate the Joint Set Length Factor (JSLF), which is the mean length of the joint sets, weighted by POC.
 #    JSLF = POC(s) * Lp + POC(w) * Lw / (POC(s) + POC(w))
 # 2. Run BPLANE.py and BWEDGE.py using the JSLF as the mean length of the planar set and as the mean length of both wedge sets
