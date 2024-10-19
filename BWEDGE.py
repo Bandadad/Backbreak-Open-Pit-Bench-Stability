@@ -22,7 +22,6 @@ def calculate_wedge_params(row, c1_mean, c1_std, phi1_mean, phi1_std, c2_mean, c
     return pd.Series([trend_i, plunge_i, distance_from_crest, FOS, probability_of_failure, message])
 
 
-
 # Function to compute the normal vector from dip and dip direction
 def compute_normal(dip, dip_dir):
     dip_rad = np.radians(dip)
@@ -323,6 +322,7 @@ def calculate_cell_stability(group, master_df):
     prob_stability = ((Nt - N) / Nt) + (1 / Nt) * stability_product_sum
     
     return pd.Series({'Probability of Stability': prob_stability})
+
 
 def main():
     # Define the number of simulations
