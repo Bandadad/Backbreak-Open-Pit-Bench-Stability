@@ -331,7 +331,7 @@ def main():
     dip_JP1_mean, dip_JP1_std = 72.35, 8.35
     dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
     spacing_JP1 = 3.8
-    mean_length1 = 8.63
+    mean_length1 = 8.5
     phi1_mean, phi1_std = 31, 7
     c1_mean, c1_std = 0, 0
 
@@ -339,7 +339,7 @@ def main():
     dip_JP2_mean, dip_JP2_std = 51.8, 13.87
     dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
     spacing_JP2 = 6.2
-    mean_length2 = 12.5
+    mean_length2 = 8.5
     phi2_mean, phi2_std = 25, 5
     c2_mean, c2_std = 0, 0
 
@@ -384,6 +384,8 @@ def main():
 
     # Calculate Distance from Crest
     df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
+    df_grouped.to_csv('BWedge_out.csv', index=False)
+    plot_FOS_histogram(master_df)
 
     # Plot Probability of Stability vs Distance from Crest
     plt.figure(figsize=(8, 6))
