@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
 ################
@@ -18,6 +19,8 @@ import matplotlib.pyplot as plt
 
 
 # Variables
+bench_height = 25  # Given bench height
+bench_width = 25   # Given bench width
 PS_POC = 0.75  # Plane Shear Probability of Occurrence
 WF_POC = 0.125 # Joint Probability of Occurrence of Wedge Failures
 
@@ -59,7 +62,7 @@ df_plot = pd.DataFrame({
     'Distance from Crest (m)': distance_from_crest,
     'Probability of Stability': joint_pos
 })
-print(df_plot)
+
 # Plot Probability of Stability vs Distance from Crest
 plt.figure(figsize=(8, 6))
 plt.plot(df_plot['Distance from Crest (m)'], df_plot['Probability of Stability'], marker='o')
@@ -71,3 +74,29 @@ plt.ylabel('Probability of Stability')
 plt.grid(True)
 plt.show()
 
+#####################
+# Second plot: Cumulative Probability of BFA < x #
+#####################
+
+# Compute the Bench Face Angle (BFA) in degrees
+df_plot['BFA'] = np.degrees(np.arctan(bench_height / df_plot['Distance from Crest (m)']))
+
+# Append point (90, 0) for proper plotting, with Distance from Crest = 0 and Probability of Stability = 0
+df_plot = pd.concat([df_plot, pd.DataFrame({
+    'BFA': [90], 
+    'Probability of Stability': [0], 
+    'Distance from Crest (m)': [0]})], ignore_index=True)
+
+# Sort by BFA to ensure smooth plotting
+df_plot = df_plot.sort_values(by='BFA')
+print(df_plot)
+# Second plot: Cumulative Probability of BFA < x
+plt.figure(figsize=(8, 6))
+plt.plot(df_plot['BFA'], (1 - df_plot['Probability of Stability']), linestyle='--', color='black', linewidth=0.8)
+plt.title('Cumulative Probability of BFA < x')
+plt.xlabel('Bench Face Angle (degrees)')
+plt.ylabel('Cumulative Probability')
+plt.ylim(0, 1)
+plt.xlim(0, 90)  # Extend the x-axis to include 90 degrees
+plt.grid(True)
+plt.show()
