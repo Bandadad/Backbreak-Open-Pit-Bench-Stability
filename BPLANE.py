@@ -383,7 +383,7 @@ def main():
     width = height
     cell_number = 12
     cell_width = width / cell_number
-    mean_dip, std_dip = 45, 8
+    mean_dip, std_dip = 55, 8
     mean_ddr, std_ddr = 180, 5
     mean_spacing = 2.5
     std_spacing = 0.5

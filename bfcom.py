@@ -24,6 +24,8 @@ bench_width = 25   # Given bench width
 PS_POC = 0.75  # Plane Shear Probability of Occurrence
 WF_POC = 0.125 # Joint Probability of Occurrence of Wedge Failures
 
+bfa_shift = 10  # Shift the BFA due to blasting disturbance
+
 # File paths
 bplane_file = 'BPlane_out.csv'
 bwedge_file = 'BWedge_out.csv'
@@ -86,17 +88,22 @@ df_plot = pd.concat([df_plot, pd.DataFrame({
     'BFA': [90], 
     'Probability of Stability': [0], 
     'Distance from Crest (m)': [0]})], ignore_index=True)
-
+df_plot['Predicted BFA'] = df_plot['BFA'] - bfa_shift
+df_plot['Predicted BFA'] = df_plot['Predicted BFA'].clip(lower=0)
 # Sort by BFA to ensure smooth plotting
 df_plot = df_plot.sort_values(by='BFA')
 print(df_plot)
 # Second plot: Cumulative Probability of BFA < x
 plt.figure(figsize=(8, 6))
-plt.plot(df_plot['BFA'], (1 - df_plot['Probability of Stability']), linestyle='--', color='black', linewidth=0.8)
+plt.plot(df_plot['BFA'], (1 - df_plot['Probability of Stability']),
+         linestyle='--', color='black', linewidth=0.8, label='Theoretical BFA')
+plt.plot(df_plot['Predicted BFA'], (1 - df_plot['Probability of Stability']),
+         linestyle='-', color='red', linewidth=0.8, label='Predicted BFA')
 plt.title('Cumulative Probability of BFA < x')
 plt.xlabel('Bench Face Angle (degrees)')
 plt.ylabel('Cumulative Probability')
 plt.ylim(0, 1)
 plt.xlim(0, 90)  # Extend the x-axis to include 90 degrees
 plt.grid(True)
+plt.legend() 
 plt.show()
