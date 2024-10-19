@@ -383,7 +383,7 @@ def main():
     width = height
     cell_number = 12
     cell_width = width / cell_number
-    mean_dip, std_dip = 55, 8
+    mean_dip, std_dip = 45, 8
     mean_ddr, std_ddr = 180, 5
     mean_spacing = 2.5
     std_spacing = 0.5
@@ -391,7 +391,7 @@ def main():
     std_friction_angle = 2
     mean_cohesion = 0.00
     std_cohesion = 0.0
-    mean_length = 8.5
+    mean_length = 7.93
     rock_density = 2700
     gravity = 9.81
     correlation_length = 10
@@ -409,6 +409,7 @@ def main():
     df_grouped = master_df.groupby('Cell Number').apply(lambda group: calculate_cell_stability(group, master_df), include_groups=False).reset_index()
     df_grouped['Distance from Crest'] = (df_grouped['Cell Number'] * cell_width) - 0.5 * cell_width
     df_grouped = fill_missing_cells(df_grouped, cell_number, cell_width)
+    df_grouped.to_csv('BPlane_out.csv', index=False)
     
     # Plot results
     plot_probability_of_stability(df_grouped, width)
