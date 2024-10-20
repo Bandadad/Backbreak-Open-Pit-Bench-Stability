@@ -14,6 +14,7 @@ The repository includes:
 ## References
 
 Based on interpretations of the following documents:
+
   NIOSH [2007]. A user's guide for the Bplane, Bstepp, and Bwedge computer programs.
   NIOSH Information Circular (IC) 9494. By Miller S, Whyatt J, Dwyer JG, McHugh E. Spokane,
   WA: U.S. Department of Health and Human Services, Public Health Service, Centers for
@@ -25,7 +26,7 @@ Based on interpretations of the following documents:
 Wedge Solution is from:
   Hoek, E. and Bray, J.W. (1981). Rock Slope Engineering, Revised 3rd edition, The Institution of Mining and Metallurgy, London, pp 341 - 351.
 
-  
+
 ## Features
 
 - **Planar and Wedge Simulations**: Separate scripts to simulate and analyze both failure modes.
