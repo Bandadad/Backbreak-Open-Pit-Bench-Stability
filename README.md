@@ -117,13 +117,13 @@ The scripts will generate CSV files and visualizations of the probability of sta
 ## Examples
 
 ### Planar Failure Simulation
-![](path-to-planar-failure-plot)
+![Data Flow](./images/planar.png)
 
 ### Wedge Failure Simulation
-![](path-to-wedge-failure-plot)
+![Data Flow](./images/wedge.png)
 
 ### Combined Failure Mode Analysis
-![](path-to-combined-failure-plot)
+![Data Flow](./images/bfcom.png)
 
 ## Contributing
 
