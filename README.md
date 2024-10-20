@@ -11,6 +11,21 @@ The repository includes:
 - **Wedge Failure Simulation**: Models wedge formation from joint plane intersections.
 - **Combined Failure Mode Analysis**: Combines the outputs of planar and wedge failure models for a comprehensive stability analysis.
 
+## References
+
+Based on interpretations of the following documents:
+  NIOSH [2007]. A user's guide for the Bplane, Bstepp, and Bwedge computer programs.
+  NIOSH Information Circular (IC) 9494. By Miller S, Whyatt J, Dwyer JG, McHugh E. Spokane,
+  WA: U.S. Department of Health and Human Services, Public Health Service, Centers for
+  Disease Control and Prevention, National Institute for Occupational Safety and Health, DHHS
+  (NIOSH) Publication No. 2007–108. 
+
+  Miller, S.M., Girard, J.M., and McHugh, E. (2000). Computer modeling of catch benches to mitigate rockfall hazards in open pit mines. Pacific Rocks 2000, Balkema, Rotterdam, pp. 539-545.
+
+Wedge Solution is from:
+  Hoek, E. and Bray, J.W. (1981). Rock Slope Engineering, Revised 3rd edition, The Institution of Mining and Metallurgy, London, pp 341 - 351.
+
+  
 ## Features
 
 - **Planar and Wedge Simulations**: Separate scripts to simulate and analyze both failure modes.
