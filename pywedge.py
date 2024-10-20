@@ -193,13 +193,13 @@ def generate_intersections(planes_JP1, dips_JP1, dip_dirs_JP1, planes_JP2, dips_
         return filtered_lines_JP1, filtered_lines_JP2, intersection_points
 
 
-def plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height):
+def plot_joints_and_intersections(filtered_lines_JP1, filtered_lines_JP2, intersection_points, width, height, simulation_number):
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.set_xlim(-width/2, width/2)
     ax.set_ylim(-height/2, height/2)
     ax.set_xlabel('X-axis (ft)')
     ax.set_ylabel('Y-axis (ft)')
-    ax.set_title('Projection of Joint Sets on Vertical Plane\n(Only lines intersecting the top edge are shown)')
+    ax.set_title(f'Projection of Joint Sets on Vertical Plane for Simulation {simulation_number} \n(Only lines intersecting the top edge are shown)')
 
     # Draw rectangle boundary
     rect_corners = np.array([[-width/2, -height/2], [width/2, -height/2], [width/2, height/2], [-width/2, height/2], [-width/2, -height/2]])
@@ -351,15 +351,15 @@ def main():
     c1_mean, c1_std = 0, 0
 
     # Joint Set 2
-    dip_JP2_mean, dip_JP2_std = 51.8, 13.87
+    dip_JP2_mean, dip_JP2_std = 65.0, 13.87
     dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
-    spacing_JP2 = 6.2
+    spacing_JP2 = 2.2
     mean_length2 = 8.5
     phi2_mean, phi2_std = 25, 5
     c2_mean, c2_std = 0, 0
 
     # Specify the simulation number to plot generated wedges on the simulation windown (set to None if not needed)
-    simulation_number = 10  # Replace with the desired simulation number
+    simulation_number = 20  # Replace with the desired simulation number
     
     # Variables to store the data for the specific simulation for plotting later
     saved_filtered_lines_JP1 = None
@@ -427,7 +427,7 @@ def main():
     
     # Plot the joints and intersections for the specified simulation
     if saved_filtered_lines_JP1 is not None and saved_filtered_lines_JP2 is not None and saved_intersection_points is not None:
-        plot_joints_and_intersections(saved_filtered_lines_JP1, saved_filtered_lines_JP2, saved_intersection_points, width, height)
+        plot_joints_and_intersections(saved_filtered_lines_JP1, saved_filtered_lines_JP2, saved_intersection_points, width, height, simulation_number)
 
 
 if __name__ == "__main__":
