@@ -358,6 +358,14 @@ def main():
     phi2_mean, phi2_std = 25, 5
     c2_mean, c2_std = 0, 0
 
+    # Specify the simulation number to plot generated wedges on the simulation windown (set to None if not needed)
+    simulation_number = 10  # Replace with the desired simulation number
+    
+    # Variables to store the data for the specific simulation for plotting later
+    saved_filtered_lines_JP1 = None
+    saved_filtered_lines_JP2 = None
+    saved_intersection_points = None
+
     # Initialize an empty dataframe to store the results of all simulations
     master_df = pd.DataFrame()
 
@@ -389,6 +397,12 @@ def main():
         # Append the result of this simulation to the master dataframe
         master_df = pd.concat([master_df, df_intersections], ignore_index=True)
 
+        # If the current simulation is the desired one for plotting, save the data
+        if simulation_number and (i + 1) == simulation_number:
+            saved_filtered_lines_JP1 = filtered_lines_JP1
+            saved_filtered_lines_JP2 = filtered_lines_JP2
+            saved_intersection_points = intersection_points
+
     # Group by Cell Number and calculate the required values for aggregated simulations
     # Apply the calculation to each grouped dataframe
     df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(
@@ -410,6 +424,11 @@ def main():
     plt.ylabel('Probability of Stability')
     plt.grid(True)
     plt.show()
+    
+    # Plot the joints and intersections for the specified simulation
+    if saved_filtered_lines_JP1 is not None and saved_filtered_lines_JP2 is not None and saved_intersection_points is not None:
+        plot_joints_and_intersections(saved_filtered_lines_JP1, saved_filtered_lines_JP2, saved_intersection_points, width, height)
+
 
 if __name__ == "__main__":
     main()
