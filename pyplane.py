@@ -382,7 +382,7 @@ def main():
     # Define the bench face orientation and dimensions  - vertical plane (VP)
     dip_VP = 90
     dip_dir_VP = 195
-    height = 25 # ft
+    height = 50 # ft
     width = height # ft 
     cell_number = 12
     cell_width = width / cell_number
@@ -396,7 +396,7 @@ def main():
     std_friction_angle = 2
     mean_cohesion = 0.00 # psf
     std_cohesion = 0.0
-    mean_length = 11 # ft
+    mean_length = 8.5 # ft
 
     correlation_length = 10
 

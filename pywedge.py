@@ -333,7 +333,7 @@ def main():
     dip_dir_VP = 195
 
     # Define the dimensions of the simulation window on the bench face
-    height = 25
+    height = 50
     width = height
     gamma = 165  # Unit weight of rock (lb/ft^3)
 
@@ -346,7 +346,7 @@ def main():
     dip_JP1_mean, dip_JP1_std = 72.35, 8.35
     dip_dir_JP1_mean, dip_dir_JP1_std = 108.71, 11.7
     spacing_JP1 = 3.8
-    mean_length1 = 11
+    mean_length1 = 8.5
     phi1_mean, phi1_std = 31, 7
     c1_mean, c1_std = 0, 0
 
@@ -354,7 +354,7 @@ def main():
     dip_JP2_mean, dip_JP2_std = 51.8, 13.87
     dip_dir_JP2_mean, dip_dir_JP2_std = 214.8, 18.44
     spacing_JP2 = 6.2
-    mean_length2 = 11
+    mean_length2 = 8.5
     phi2_mean, phi2_std = 25, 5
     c2_mean, c2_std = 0, 0
 
