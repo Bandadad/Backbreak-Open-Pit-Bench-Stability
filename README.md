@@ -121,6 +121,8 @@ The scripts will generate CSV files and visualizations of the probability of sta
 
 ### Wedge Failure Simulation
 ![Data Flow](./images/wedge.png)
+
+### Wedge Intersections
 ![Data Flow](./images/wedge_intersections.png)
 
 ### Combined Failure Mode Analysis
