@@ -389,9 +389,6 @@ def main():
         # Append the result of this simulation to the master dataframe
         master_df = pd.concat([master_df, df_intersections], ignore_index=True)
 
-    # Calculate the total length of the original master dataframe
-    Nt = len(master_df)
-
     # Group by Cell Number and calculate the required values for aggregated simulations
     # Apply the calculation to each grouped dataframe
     df_grouped = master_df.groupby('Cell Number', group_keys=False).apply(
